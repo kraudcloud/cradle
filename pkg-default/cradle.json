@@ -1,0 +1,13 @@
+{
+    "version": 2,
+    "firmware": {
+        "pflash0": "pflash0"
+    },
+    "kernel": {
+        "kernel":   "kernel",
+        "initrd":   "initrd"
+    },
+    "machine": {
+        "type": "microvm"
+    }
+}

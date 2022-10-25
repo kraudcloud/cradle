@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "id": "6115c213-a87a-4206-9b99-0d0235ac560f",
+  "pod": {
+    "name": "ravishing_morning",
+    "namespace": "default",
+    "containers": [
+      {
+        "id": "893aac2a-dcf2-431a-9ceb-626f0bfe218a",
+        "name": "ravishing_morning",
+        "hostname": "ravishing_morning",
+        "image": {
+          "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
+          "layers": [
+            {
+              "id": "85d2e674-ac23-4757-a4f1-191bb6b644c5",
+              "sha256": "a6597ce92df07c3260f1facd245a2aa35884f900aca3a5fd6dd2cd2dc61d455a",
+              "digest": ""
+            }
+          ]
+        },
+        "process": {
+          "tty": true,
+          "cmd": [
+            "/sbin/init"
+          ],
+          "env": {
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          },
+          "workdir": "/"
+        },
+        "lifecycle": {
+          "restart_on_success": true,
+          "restart_on_failure": true,
+          "restart_delay": 0,
+          "max_restarts": 2,
+          "critical": true
+        },
+        "block_volume_mounts": [{
+            "block_volume_name":  "files",
+            "guest_path":         "/"
+        }]
+      }
+    ],
+    "block_volumes": [
+        {
+            "id":         "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
+            "name":       "files",
+            "class":      "rbd"
+        }
+    ]
+  },
+  "network" : {
+    "fip6": "fddd::2",
+    "fgw6": "fddd::1",
+    "tip4" : "10.0.2.15",
+    "tgw4" : "10.0.2.2",
+    "nameservers" : ["1.1.1.1"]
+  }
+}
+
