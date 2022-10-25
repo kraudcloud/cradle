@@ -1,0 +1,51 @@
+{
+  "Version": "1",
+  "ID": "222756fe-329c-4352-831c-88266050189a",
+  "TenantID": "b52f60f2-c930-47e7-a386-d9dc012478e8",
+  "Name": "busybox",
+  "Namespace": "default",
+  "Cpu": 2000,
+  "Mem": 1000000000,
+  "Network": {
+    "VpcID": "5f35dc99-1d0e-40ff-971d-6d2e24f8d6a0"
+  },
+  "Containers": [
+    {
+      "ID": "82d0d4ed-5a10-4c1e-a89f-b417fd333c94",
+      "Name": "busybox",
+      "Hostname": "lustrous_pond",
+      "Image": {
+        "ID": "1b3a6eae-039c-4109-94f3-d670aaad1b27",
+        "Ref": "",
+        "Layers": [
+          {
+            "ID": "52dc2d59-a883-435a-8159-e3e407719f6c",
+            "Sha": "19d511225f94f9b5cbf3836eb02b5273c01b95da50735742560e3e45b8c8bfcc",
+            "OciID": "sha256:7ad00cd55506625f2afad262de6002c8cef20d214b353e51d1025e40e8646e18"
+          }
+        ],
+        "Config": {
+          "Cmd": [
+            "sh"
+          ],
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Image": "sha256:cff66996a67577788a00e5c9fc546f58b45d47b7c897fea8588bd68c7576ae0e"
+        }
+      },
+      "Proc": {
+        "Args": null,
+        "Entrypoint": null,
+        "Env": null
+      },
+      "VfsMounts": [],
+      "VolumeMounts": [],
+      "ConfigMounts": [],
+      "SecretMounts": []
+    }
+  ],
+  "Res": {},
+  "Volumes": null,
+  "ApiRole": null
+}
