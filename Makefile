@@ -16,7 +16,7 @@ build/linux:
 	cd build &&\
 	git clone https://github.com/torvalds/linux.git &&\
 
-out/kernel: build/linux
+out/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
 	git checkout v6.1-rc2 &&\
 	cp ../../kernel-config-x86_64 .config &&\
