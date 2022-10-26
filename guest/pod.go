@@ -25,27 +25,27 @@ var containers = make(map[string]*Container)
 var containersLock sync.Mutex
 
 func pod() {
-	f, err := os.Open("/config/pod.json")
+	f, err := os.Open("/config/cradle.json")
 	if err != nil {
 		panic(err)
 	}
 
-	var pod spec.Pod
-	err = json.NewDecoder(f).Decode(&pod)
+	var config spec.Cradle
+	err = json.NewDecoder(f).Decode(&config)
 	if err != nil {
 		panic(err)
 	}
 
-	syscall.Sethostname([]byte(pod.Name + "." + pod.Namespace))
+	syscall.Sethostname([]byte(config.Pod.Name + "." + config.Pod.Namespace))
 
 	containersLock.Lock()
 	defer containersLock.Unlock()
 
-	for _, c := range pod.Containers {
+	for _, c := range config.Pod.Containers {
 		container := Container{
 			Log:  NewLog(1024 * 1024),
 			Spec: c,
-			PodSpec: pod,
+			PodSpec: config.Pod,
 		}
 		go container.manager()
 	}
@@ -61,12 +61,11 @@ func (c *Container) manager() {
 		panic(err)
 	}
 
-	var max = 100
+	var max = 100000000
 	if c.Spec.Lifecycle.MaxRestarts > 0 {
 		max = c.Spec.Lifecycle.MaxRestarts
 	}
-	for attempt := 0; ; attempt++ {
-		log.Println("container", c.Spec.Name, "starting")
+	for attempt := 1; ; attempt++ {
 		err = c.run()
 
 		var restart = true
@@ -95,9 +94,8 @@ func (c *Container) manager() {
 		time.Sleep(time.Second * time.Duration(delay))
 	}
 
-	log.Println("container", c.Spec.Name, "will not be restarted")
-
-	if c.Spec.Lifecycle.ShutdownOnExit {
+	if c.Spec.Lifecycle.Critical {
+		time.Sleep(time.Millisecond * 100)
 		exit(fmt.Errorf("critical container %s exited", c.Spec.Name))
 	}
 }

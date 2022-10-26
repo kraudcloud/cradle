@@ -27,7 +27,7 @@ out/kernel: build/linux kernel-config-x86_64
 out/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
 	( cd build/initrd && find . | cpio -o -H newc ) > out/initrd
 
-out/config.tar: launch/pod.json
+out/config.tar: launch/cradle.json
 	tar  cf out/config.tar -C launch .
 
 build/busybox:

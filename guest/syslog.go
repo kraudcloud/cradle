@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
+	"strings"
 )
 
 type Formatter struct{}
@@ -28,7 +29,17 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	case logrus.TraceLevel:
 		prefix = "<7>"
 	}
-	return []byte(fmt.Sprintf("%s%s\n", prefix, entry.Message)), nil
+
+
+	m := strings.TrimFunc(entry.Message, func(c rune) bool {
+		return !(('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == ' ' || c == '\033')
+	})
+
+	m = fmt.Sprintf("%s%s", prefix, m)
+	if !strings.HasSuffix(m, "\n") {
+		m += "\n"
+	}
+	return []byte(m), nil
 }
 
 var log = &logrus.Logger{

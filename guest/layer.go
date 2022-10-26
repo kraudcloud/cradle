@@ -79,9 +79,6 @@ func untar(fo io.Reader, prefix string) {
 		}
 
 		hdr.Name = prefix + hdr.Name
-		if strings.HasPrefix(hdr.Linkname, "/") {
-			hdr.Linkname = prefix + hdr.Linkname
-		}
 
 		dir, name := path.Split(hdr.Name)
 		os.MkdirAll(dir, 0755)

@@ -13,33 +13,34 @@ import (
 	"time"
 	"github.com/kraudcloud/cradle/spec"
 	"encoding/json"
+	"path/filepath"
+	"strings"
 )
 
 
 
 func main_runc() {
 
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 {
 		fmt.Println("usage: runc <container-id>")
 		os.Exit(1)
 	}
 
 	id		:= os.Args[1]
-	log.Info("runc " + id)
 
-	f, err := os.Open("/config/pod.json")
+	f, err := os.Open("/config/cradle.json")
 	if err != nil {
 		panic(err)
 	}
 
-	var pod spec.Pod
-	err = json.NewDecoder(f).Decode(&pod)
+	var cradle spec.Cradle
+	err = json.NewDecoder(f).Decode(&cradle)
 	if err != nil {
 		panic(err)
 	}
 
 	var container spec.Container
-	for _, c := range pod.Containers {
+	for _, c := range cradle.Pod.Containers {
 		if c.ID == id {
 			container = c
 			break
@@ -49,10 +50,7 @@ func main_runc() {
 		panic("container not found")
 	}
 
-
-
 	var root = fmt.Sprintf("/cache/containers/%s/root", id)
-
 
 	// /proc
 	os.MkdirAll(root + "/proc", 0777);
@@ -179,25 +177,46 @@ func main_runc() {
 	}
 
 
-	cmd := exec.Command(icmd, iargs...)
-	cmd.Chroot	= root
+	if container.Process.Env == nil {
+		container.Process.Env = map[string]string{}
+	}
+	if container.Process.Env["PATH"] == "" {
+		container.Process.Env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	}
+	if container.Process.Env["TERM"] == "" {
+		container.Process.Env["TERM"] = "xterm"
+	}
+	if container.Process.Env["HOME"] == "" {
+		container.Process.Env["HOME"] = "/root"
+	}
+
+	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
+		for _, path := range strings.Split(container.Process.Env["PATH"], ":") {
+			if _, err := os.Stat(filepath.Join(root, path, container.Process.Cmd[0])); err == nil {
+				container.Process.Cmd[0] = filepath.Join(path, container.Process.Cmd[0])
+				break
+			}
+		}
+	}
+
+	var flatenv = []string{}
+	for k, v := range container.Process.Env {
+		flatenv = append(flatenv, k + "=" + v)
+	}
+
+	cmd := exec.Command(container.Process.Cmd[0], container.Process.Cmd[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: root}
+	cmd.Env		= flatenv
+	cmd.Dir		= container.Process.Workdir
 	cmd.Stdin	= os.Stdin
 	cmd.Stdout	= os.Stdout
 	cmd.Stderr	= os.Stderr
 
-	if container.Workdir == "" {
+
+	if cmd.Dir == "" {
 		cmd.Dir		= "/"
-	} else {
-		cmd.Dir		= container.Workdir
 	}
 
-	cmd.Env		= os.Environ()
-	cmd.Env		= append(cmd.Env, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	cmd.Env		= append(cmd.Env, "TERM=xterm")
-	cmd.Env		= append(cmd.Env, "HOME=/root")
-	cmd.Env		= append(cmd.Env, "USER=root")
-	cmd.Env		= append(cmd.Env, "USER=root")
-	cmd.Env		= append(cmd.Env, "container=docker")
 	err = cmd.Run()
 	if err != nil {
 		log.Error("exec failed: ", err)
@@ -316,7 +335,7 @@ func (c *Container) run() error {
 
 	go func() {
 		n, err := io.Copy(c.Log, c.Pty)
-		fmt.Println("UNEXPECTED END OF PTXM", n, err)
+		log.Debugf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
 	}()
 
 	state, err := cmd.Process.Wait()
@@ -324,16 +343,19 @@ func (c *Container) run() error {
 		return err
 	}
 
-	if !state.Success() {
-		return fmt.Errorf("runc exited with error %s", state.String())
-	}
-
-	fmt.Println("container exit ", state.ExitCode())
-	fmt.Println("log before exit:")
-	time.Sleep(10 * time.Millisecond)
+	//fmt.Println("log before exit:")
+	time.Sleep(10*time.Millisecond)
 	c.Pty.Close()
-	c.Log.Dump(os.Stderr)
+	os.Stdout.Sync()
+	fmt.Print("\n--------\n")
+	c.Log.Dump(os.Stdout)
+	fmt.Print("--------\n")
+	os.Stdout.Sync()
+	time.Sleep(10*time.Millisecond)
 
+	if !state.Success() {
+		return fmt.Errorf(state.String())
+	}
 
 	return nil
 }

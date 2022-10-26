@@ -13,7 +13,7 @@ func exit(err error) {
 
 	//TODO stop all rescheduling
 
-	log.Printf("shutdown reason: %v", err)
+	log.Printf("shutdown reason: %s\n", err.Error())
 	//TODO report exit error to k8d
 
 	cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")
