@@ -1,3 +1,5 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
 import (
@@ -6,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"os"
 )
 
 func axyinit() {
@@ -28,6 +31,7 @@ func axyinit() {
 		return
 	}
 
+	os.MkdirAll("/vfs/var/run/", 0755)
 	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")
 	if err != nil {
 		log.Warn("axy: Failed to listen on /var/run/docker.sock ", err)

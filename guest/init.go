@@ -1,12 +1,42 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
 import (
-	"os"
-	"syscall"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
+	"syscall"
+	"time"
 )
+
+func main_init() {
+	uinit()
+
+	lo, err := os.Create("/dev/kmsg")
+	if err == nil {
+		log.Out = lo
+		log.Formatter = &Formatter{}
+	}
+	log.Println("\033[1;34m ---- KRAUDCLOUD CRADLE ---- \033[0m")
+
+	wdinit()
+
+	makedev()
+	mountnvme()
+	unpack()
+
+	axyinit()
+
+	pod()
+
+	shell()
+
+	for {
+		time.Sleep(time.Minute)
+	}
+}
 
 // early userspace init
 func uinit() {
@@ -14,19 +44,19 @@ func uinit() {
 	syscall.Mount("none", "/dev", "devtmpfs", 0, "")
 
 	os.MkdirAll("/proc", 0777)
-	syscall.Mount("none", "/proc", "proc", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RELATIME, "")
+	syscall.Mount("none", "/proc", "proc", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
 	os.MkdirAll("/sys", 0777)
-	syscall.Mount("none", "/sys", "sysfs", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RELATIME, "")
+	syscall.Mount("none", "/sys", "sysfs", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
 	os.MkdirAll("/dev/shm", 0777)
-	syscall.Mount("none", "/dev/shm", "tmpfs", syscall.MS_NOSUID | syscall.MS_NODEV , "")
+	syscall.Mount("none", "/dev/shm", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, "")
 
 	os.MkdirAll("/dev/pts", 0777)
-	syscall.Mount("none", "/dev/pts", "devpts", syscall.MS_NOSUID | syscall.MS_NOEXEC | syscall.MS_RELATIME, "")
+	syscall.Mount("none", "/dev/pts", "devpts", syscall.MS_NOSUID|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
 	os.MkdirAll("/dev/mqueue", 0777)
-	syscall.Mount("none", "/dev/mqueue", "mqueue", syscall.MS_NOSUID | syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_RELATIME , "")
+	syscall.Mount("none", "/dev/mqueue", "mqueue", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
 }
 
@@ -47,18 +77,18 @@ func makedev() {
 		name := f.Name()
 
 		// /dev/disk/by-serial/serial
-		serial, err := ioutil.ReadFile("/sys/block/"+name+"/serial")
+		serial, err := ioutil.ReadFile("/sys/block/" + name + "/serial")
 		if err == nil {
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 		}
 
-		serial, err = ioutil.ReadFile("/sys/block/"+name+"/device/vpd_pg83")
+		serial, err = ioutil.ReadFile("/sys/block/" + name + "/device/vpd_pg83")
 		if err == nil {
 			serial = serial[8:]
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 
 			if strings.HasPrefix(string(serial), "layer.") {
-				os.Symlink("/dev/"+name, "/dev/disk/by-layer-uuid/" + string(serial[6:]))
+				os.Symlink("/dev/"+name, "/dev/disk/by-layer-uuid/"+string(serial[6:]))
 			}
 		}
 	}
@@ -85,7 +115,7 @@ func mountnvme() {
 	os.MkdirAll("/cache", 0777)
 	if _, err := os.Stat("/dev/disk/by-serial/cache"); err != nil {
 		log.Error("missing cache, will run in ramdisk")
-		return;
+		return
 	}
 
 	if err := mkfs("/dev/disk/by-serial/cache"); err != nil {

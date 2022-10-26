@@ -1,53 +1,20 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
-/*
-import (
-	"bufio"
-	"github.com/kraudcloud/cradle/proto"
-	"encoding/binary"
-	"encoding/json"
-	"fmt"
-	"github.com/creack/pty"
-	"github.com/mdlayher/vsock"
-	"github.com/oraoto/go-pidfd"
-	"golang.org/x/sys/unix"
-	"io"
-	"net"
-	"os"
-	"os/exec"
-	"runtime"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
-)
-*/
-
-
-
 import (
 	"os"
-	"time"
+	"path/filepath"
 )
-
 
 func main() {
-
-	uinit();
-
-	lo, err := os.Create("/dev/kmsg")
-	if err == nil {
-		log.Out = lo
+	switch filepath.Base(os.Args[0]) {
+	case "init":
+		main_init()
+	case "runc":
+		main_runc()
+	default:
+		panic("no applet " + filepath.Base(os.Args[0]))
 	}
-	log.Println("\033[1;34m ---- KRAUDCLOUD CRADLE ---- \033[0m")
-
-	wdinit();
-
-	makedev();
-	mountnvme();
-	unpack();
-
-	axyinit();
-	shell();
-	for ;; { time.Sleep(time.Minute) }
 }
+

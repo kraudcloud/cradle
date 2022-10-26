@@ -1,12 +1,15 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
-	"fmt"
 )
 
-type Formatter struct {}
+type Formatter struct{}
+
 func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var prefix string
 	switch entry.Level {
@@ -28,9 +31,8 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s%s\n", prefix, entry.Message)), nil
 }
 
-
 var log = &logrus.Logger{
-	Level:		logrus.DebugLevel,
-	Out:		os.Stderr,
-	Formatter:	&Formatter{},
+	Level:     logrus.DebugLevel,
+	Out:       os.Stderr,
+	Formatter: &logrus.TextFormatter{},
 }

@@ -1,3 +1,5 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
 import (

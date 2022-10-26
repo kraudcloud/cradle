@@ -1,4 +1,4 @@
-all: out/bios.bin out/kernel out/initrd
+all: out/bios.bin out/kernel out/initrd out/config.tar
 
 build/qboot:
 	mkdir -p build
@@ -27,6 +27,9 @@ out/kernel: build/linux
 out/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
 	( cd build/initrd && find . | cpio -o -H newc ) > out/initrd
 
+out/config.tar: launch/pod.json
+	tar  cf out/config.tar -C launch .
+
 build/busybox:
 	mkdir -p build/
 	cd build/&&\
@@ -42,6 +45,7 @@ build/initrd/bin/busybox: build/busybox
 build/initrd/init: .PHONY
 	mkdir -p build/initrd
 	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init
+	ln -sf ../init build/initrd/bin/runc
 
 
 build/e2fsprogs-1.46.5:
@@ -49,8 +53,6 @@ build/e2fsprogs-1.46.5:
 	cd build &&\
 	wget https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.46.5/e2fsprogs-1.46.5.tar.gz &&\
 	tar -xzf e2fsprogs-1.46.5.tar.gz
-
-
 
 build/initrd/bin/mkfs.ext4: build/e2fsprogs-1.46.5
 	cd build/e2fsprogs-1.46.5 &&\

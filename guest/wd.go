@@ -1,11 +1,12 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
 import (
-	"os"
 	"golang.org/x/sys/unix"
+	"os"
 	"time"
 )
-
 
 func wdinit() {
 	watchdog, err := os.OpenFile("/dev/watchdog", os.O_WRONLY, 0)

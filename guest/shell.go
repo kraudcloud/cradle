@@ -1,13 +1,13 @@
+// Copyright (c) 2020-present devguard GmbH
+
 package main
 
-
 import (
+	"errors"
 	"os"
 	"os/exec"
-	"errors"
 	"time"
 )
-
 
 func shell() {
 	if _, err := os.Stat("/bin/sh"); errors.Is(err, os.ErrNotExist) {
@@ -15,7 +15,7 @@ func shell() {
 	}
 
 	go func() {
-		for ;; {
+		for {
 			cmd := exec.Command("/bin/sh")
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
