@@ -45,6 +45,7 @@ build/initrd/bin/busybox: build/busybox
 build/initrd/init: .PHONY
 	mkdir -p build/initrd
 	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init
+	mkdir -p build/initrd/bin
 	ln -sf ../init build/initrd/bin/runc
 
 

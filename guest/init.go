@@ -22,15 +22,13 @@ func main_init() {
 	log.Println("\033[1;34mKRAUDCLOUD CRADLE\033[0m")
 
 	wdinit()
-
 	makedev()
 	mountnvme()
-	unpack()
-
+	unpackConfig()
+	network()
 	axyinit()
-
+	unpackLayers()
 	pod()
-
 	shell()
 
 	for {

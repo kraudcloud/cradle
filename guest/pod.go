@@ -13,12 +13,12 @@ import (
 )
 
 type Container struct {
-	Log		*Log
-	Spec	spec.Container
+	Log     *Log
+	Spec    spec.Container
 	PodSpec spec.Pod
-	Pty		*os.File
+	Pty     *os.File
 	Process *os.Process
-	Lock	sync.Mutex
+	Lock    sync.Mutex
 }
 
 var containers = make(map[string]*Container)
@@ -43,8 +43,8 @@ func pod() {
 
 	for _, c := range config.Pod.Containers {
 		container := Container{
-			Log:  NewLog(1024 * 1024),
-			Spec: c,
+			Log:     NewLog(1024 * 1024),
+			Spec:    c,
 			PodSpec: config.Pod,
 		}
 		go container.manager()
@@ -99,4 +99,3 @@ func (c *Container) manager() {
 		exit(fmt.Errorf("critical container %s exited", c.Spec.Name))
 	}
 }
-

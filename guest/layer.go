@@ -20,7 +20,19 @@ const (
 	opaqueWhiteout = ".wh..wh..opq"
 )
 
-func unpack() {
+func unpackConfig() {
+	os.MkdirAll("/config/", 0755)
+	fo, err := os.Open("/dev/disk/by-serial/config")
+	if err != nil {
+		log.Errorf("Open /dev/disk/by-serial/config : %v", err)
+		return
+	}
+	defer fo.Close()
+
+	untar(fo, "/config/")
+}
+
+func unpackLayers() {
 	os.MkdirAll("/cache/layers/", 0755)
 
 	iter, err := ioutil.ReadDir("/dev/disk/by-layer-uuid/")
@@ -49,15 +61,6 @@ func unpack() {
 		untar(fo, "/cache/layers/"+name+"/")
 	}
 
-	os.MkdirAll("/config/", 0755)
-	fo, err := os.Open("/dev/disk/by-serial/config")
-	if err != nil {
-		log.Errorf("Open /dev/disk/by-serial/config : %v", err)
-		return
-	}
-	defer fo.Close()
-
-	untar(fo, "/config/")
 }
 
 func untar(fo io.Reader, prefix string) {

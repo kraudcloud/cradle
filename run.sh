@@ -30,11 +30,12 @@ qemu-system-x86_64 \
     "-serial"   "stdio"\
     "-kernel"   "kernel" \
     "-initrd"   "initrd" \
-    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple acpi=off init=/init loglevel=9" \
+    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=9 ip=none" \
     "-device"   "virtio-serial" \
     "-chardev"  "socket,path=cradle,server=on,wait=off,id=cradle" \
     "-device"   "virtserialport,chardev=cradle,name=cradle" \
-    "-net"      "user" \
+    "-device"   "virtio-net-pci,netdev=eth0" \
+    "-netdev"   "user,id=eth0" \
     "-device"   "vhost-vsock-pci,id=vsock1,guest-cid=1123" \
     "-drive"    "format=raw,aio=threads,file=cache.ext4.img,readonly=off,if=none,id=drive-virtio-disk-cache" \
     "-device"   "virtio-blk-pci,scsi=off,drive=drive-virtio-disk-cache,id=virtio-disk-cache,serial=cache" \

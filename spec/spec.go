@@ -16,9 +16,6 @@ type Pod struct {
 	// uuid of pod
 	ID string `json:"id"`
 
-	// uuid of tenant
-	TenantID string `json:"tenant_id"`
-
 	// api name of pod
 	Name string `json:"name"`
 

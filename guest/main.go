@@ -17,4 +17,3 @@ func main() {
 		panic("no applet " + filepath.Base(os.Args[0]))
 	}
 }
-

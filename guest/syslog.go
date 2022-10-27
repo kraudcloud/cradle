@@ -30,7 +30,6 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		prefix = "<7>"
 	}
 
-
 	m := strings.TrimFunc(entry.Message, func(c rune) bool {
 		return !(('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == ' ' || c == '\033')
 	})
