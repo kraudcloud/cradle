@@ -19,7 +19,7 @@ func main_init() {
 		log.Out = lo
 		log.Formatter = &Formatter{}
 	}
-	log.Println("\033[1;34m ---- KRAUDCLOUD CRADLE ---- \033[0m")
+	log.Println("\033[1;34mKRAUDCLOUD CRADLE\033[0m")
 
 	wdinit()
 
@@ -67,7 +67,7 @@ func makedev() {
 	os.MkdirAll("/dev/disk/by-serial/", 0777)
 	os.MkdirAll("/dev/disk/by-layer-uuid/", 0777)
 
-	iter, err := ioutil.ReadDir("/sys/block/")
+	iter, err := ioutil.ReadDir("/sys/class/block/")
 	if err != nil {
 		log.Errorf("ReadDir: %v", err)
 		return
@@ -77,12 +77,12 @@ func makedev() {
 		name := f.Name()
 
 		// /dev/disk/by-serial/serial
-		serial, err := ioutil.ReadFile("/sys/block/" + name + "/serial")
+		serial, err := ioutil.ReadFile("/sys/class/block/" + name + "/serial")
 		if err == nil {
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 		}
 
-		serial, err = ioutil.ReadFile("/sys/block/" + name + "/device/vpd_pg83")
+		serial, err = ioutil.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
 		if err == nil {
 			serial = serial[8:]
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))

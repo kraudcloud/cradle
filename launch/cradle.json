@@ -23,7 +23,7 @@
           "cmd": [
             "sh",
             "-c",
-            "echo hello world;env;ls"
+            "echo hello world;env;ls;ip addr"
           ],
           "cwd": "/",
           "env": {
