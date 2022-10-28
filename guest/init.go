@@ -23,10 +23,11 @@ func main_init() {
 
 	wdinit()
 	makedev()
+	vmminit()
 	mountnvme()
 	unpackConfig()
+	secinit()
 	network()
-	axyinit()
 	unpackLayers()
 	pod()
 	shell()

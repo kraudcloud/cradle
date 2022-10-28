@@ -7,13 +7,16 @@ import (
 	"os/exec"
 	"syscall"
 	"time"
+	"github.com/kraudcloud/cradle/spec"
 )
 
 func exit(err error) {
 
+	vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
+
 	//TODO stop all rescheduling
 
-	log.Printf("shutdown reason: %s\n", err.Error())
+	log.Errorf("shutdown reason: %s\n", err.Error())
 	//TODO report exit error to k8d
 
 	cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")

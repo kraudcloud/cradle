@@ -14,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"bytes"
 )
 
 func main_runc() {
@@ -342,6 +343,17 @@ func (c *Container) run() error {
 	fmt.Print("--------\n")
 	os.Stdout.Sync()
 	time.Sleep(10 * time.Millisecond)
+
+
+	var lastlog bytes.Buffer
+	lastlog.Write([]byte(c.Spec.ID + "\n"))
+	fmt.Fprintf(&lastlog, "%d\n", state.ExitCode())
+	lastlog.Write([]byte("\n\n"))
+	c.Log.Dump(&lastlog)
+	if lastlog.Len() > 65000 {
+		lastlog.Truncate(65000)
+	}
+	vmm(spec.YC_KEY_CONTAINER_EXITLOG, lastlog.Bytes())
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

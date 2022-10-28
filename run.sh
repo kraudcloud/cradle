@@ -30,7 +30,7 @@ qemu-system-x86_64 \
     "-serial"   "stdio"\
     "-kernel"   "kernel" \
     "-initrd"   "initrd" \
-    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=9 ip=none" \
+    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=6 ip=none" \
     "-device"   "virtio-serial" \
     "-chardev"  "socket,path=cradle,server=on,wait=off,id=cradle" \
     "-device"   "virtserialport,chardev=cradle,name=cradle" \
