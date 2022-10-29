@@ -23,13 +23,10 @@ type Pod struct {
 	Namespace string `json:"namespace"`
 
 	// block volumes provided by the hypervisor
-	BlockVolumes []BlockVolume `json:"block_volumes"`
+	BlockVolumes []BlockVolume `json:"block_volumes,omitempty"`
 
 	// the containers inside the pod
-	Containers []Container `json:"containers"`
-
-	// k8s api role
-	Role *Role `json:"role"`
+	Containers []Container `json:"containers,omitempty"`
 }
 
 // a block volume provided by the hypervisor
@@ -37,19 +34,6 @@ type BlockVolume struct {
 
 	// uuid of block volume
 	ID string `json:"id"`
-}
-
-// k8s api role
-type Role struct {
-
-	// where to contact k8d
-	ApiAddr string `json:"api_addr"`
-
-	// ca signing k8d server cert
-	Ca []byte `json:"ca"`
-
-	// client cert and key
-	Cert []byte `json:"cert"`
 }
 
 // the container spec
@@ -74,13 +58,13 @@ type Container struct {
 	Lifecycle Lifecycle `json:"lifecycle"`
 
 	// mount block volumes
-	BlockVolumeMounts []BlockVolumeMount `json:"block_volume_mounts"`
+	BlockVolumeMounts []BlockVolumeMount `json:"block_volume_mounts,omitempty"`
 
 	// mount cradle host paths into container
-	BindMounts []BindMount
+	BindMounts []BindMount `json:"bind_mounts,omitempty"`
 
 	// k8s config objects
-	ConfigMounts []ConfigMount
+	ConfigMounts []ConfigMount `json:"config_mounts,omitempty"`
 }
 
 type Image struct {
