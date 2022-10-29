@@ -1,7 +1,7 @@
 #!/bin/sh
 
 THIS=`dirname $0`
-cd $THIS/out
+cd $THIS/test
 
 
 if [ ! -e cache.ext4.img ]; then
@@ -22,14 +22,14 @@ layer1=52dc2d59-a883-435a-8159-e3e407719f6c
 qemu-system-x86_64 \
     "-nographic" \
     "-no-acpi"  "-nodefaults" "-no-user-config"  "-nographic"  "-no-acpi"  "-enable-kvm"  "-no-reboot" \
-    "-bios"     "bios.bin" \
+    "-bios"     "../pkg/bios.bin" \
     "-cpu"      "host" \
     "-M"        "q35" \
     "-smp"      "2" \
-    "-m"        "2G" \
+    "-m"        "80M" \
     "-serial"   "stdio"\
-    "-kernel"   "kernel" \
-    "-initrd"   "initrd" \
+    "-kernel"   "../pkg/kernel" \
+    "-initrd"   "../pkg/initrd" \
     "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=6 ip=none" \
     "-device"   "virtio-serial" \
     "-chardev"  "socket,path=cradle,server=on,wait=off,id=cradle" \

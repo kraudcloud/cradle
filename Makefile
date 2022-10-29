@@ -1,34 +1,38 @@
-all: out/bios.bin out/kernel out/initrd out/config.tar
+all: pkg.tar
+
+pkg.tar: pkg/bios.bin pkg/kernel pkg/initrd test/config.tar
+	cd pkg &&\
+	docker build . -t cradle:$$(git describe --tags --always)
 
 build/qboot:
 	mkdir -p build
 	cd build &&\
 	git clone https://github.com/bonzini/qboot.git
 
-out/bios.bin: build/qboot
+pkg/bios.bin: build/qboot
 	cd build/qboot &&\
 	git checkout 8ca302e86d685fa05b16e2b208888243da319941 &&\
 	meson build && ninja -C build
-	cp build/qboot/build/bios.bin out/bios.bin
+	cp build/qboot/build/bios.bin pkg/bios.bin
 
 build/linux:
 	mkdir -p build
 	cd build &&\
 	git clone https://github.com/torvalds/linux.git &&\
 
-out/kernel: build/linux kernel-config-x86_64
+pkg/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
 	git checkout v6.1-rc2 &&\
 	cp ../../kernel-config-x86_64 .config &&\
 	make oldconfig &&\
 	make -j20
-	cp build/linux/arch/x86_64/boot/bzImage out/kernel
+	cp build/linux/arch/x86_64/boot/bzImage pkg/kernel
 
-out/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
-	( cd build/initrd && find . | cpio -o -H newc ) > out/initrd
+pkg/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
+	( cd build/initrd && find . | cpio -o -H newc ) > pkg/initrd
 
-out/config.tar: launch/cradle.json
-	tar  cf out/config.tar -C launch .
+test/config.tar: launch/cradle.json
+	tar  cf test/config.tar -C launch .
 
 build/busybox:
 	mkdir -p build/
@@ -44,7 +48,7 @@ build/initrd/bin/busybox: build/busybox
 
 build/initrd/init: .PHONY
 	mkdir -p build/initrd
-	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init
+	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init -asmflags -trimpath
 	mkdir -p build/initrd/bin
 	ln -sf ../init build/initrd/bin/runc
 

@@ -22,7 +22,7 @@
           "cmd": [
             "sh",
             "-c",
-            "echo hello world;env;ls;ip addr"
+            "echo hello world;env;ls;ip addr;free -m"
           ],
           "cwd": "/",
           "env": {

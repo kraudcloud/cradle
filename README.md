@@ -3,9 +3,15 @@ cradle
 
 the kraudcloud uvm.
 
-
 ./guest is the microvm userspace
 ./vmm is a vmm simulator that acts similar to a real vmm
+
+
+## usage
+
+    make
+    docker save cradle:92d5f68  | docker --context kraud.aep load
+    docker --context kraud.aep run -ti --label kr.cradle=cradle:92d5f68 busybox uname -a
 
 
 ## custom kernel
