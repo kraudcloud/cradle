@@ -5,7 +5,7 @@ package spec
 // the interior cradle spec
 type Cradle struct {
 	// version of spec. currently 2
-	Version string `json:"version"`
+	Version int `json:"version"`
 
 	Pod Pod `json:"pod"`
 }
