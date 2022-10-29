@@ -105,8 +105,8 @@ type Lifecycle struct {
 	// should container restart with exit code != 0
 	RestartOnFailure bool `json:"restart_on_failure"`
 
-	// delay restarts by this amount of seconds
-	RestartDelaySeconds int `json:"restart_delay_seconds"`
+	// delay restarts by this amount of milliseconds
+	RestartDelay	uint64 `json:"restart_delay"`
 
 	// give up after starting this many times.
 	// note that the first start counts too

@@ -86,12 +86,12 @@ func (c *Container) manager() {
 			break
 		}
 
-		delay := c.Spec.Lifecycle.RestartDelaySeconds
+		delay := c.Spec.Lifecycle.RestartDelay
 		if delay == 0 {
-			delay = 1
+			delay = 100
 		}
 
-		time.Sleep(time.Second * time.Duration(delay))
+		time.Sleep(time.Millisecond * time.Duration(delay))
 	}
 
 	if c.Spec.Lifecycle.Critical {
