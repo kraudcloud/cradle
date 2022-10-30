@@ -17,7 +17,7 @@ if [ ! -e initrd ]; then
 fi
 
 
-layer1=52dc2d59-a883-435a-8159-e3e407719f6c
+layer1=7b347a08-04e1-43a7-9c53-8ffb770a18fb
 
 qemu-system-x86_64 \
     "-nographic" \
@@ -30,7 +30,7 @@ qemu-system-x86_64 \
     "-serial"   "stdio"\
     "-kernel"   "../pkg/kernel" \
     "-initrd"   "../pkg/initrd" \
-    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=6 ip=none" \
+    "-append"   "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 reboot=triple loglevel=4 ip=none" \
     "-device"   "virtio-serial" \
     "-chardev"  "socket,path=cradle,server=on,wait=off,id=cradle" \
     "-device"   "virtserialport,chardev=cradle,name=cradle" \
@@ -45,5 +45,5 @@ qemu-system-x86_64 \
     "-device"   "virtio-blk-pci,scsi=off,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config" \
     "-watchdog" "i6300esb"  "-watchdog-action" "reset" \
     "-device"   "virtio-scsi,id=scsi0" \
-    "-drive"    "format=raw,aio=threads,file=layer_$layer1.tar,readonly=on,if=none,id=drive-virtio-layer1"  \
-    "-device"   "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=$layer1,device_id=layer.$layer1" \
+    "-drive"    "format=raw,aio=threads,file=layer_$layer1,readonly=on,if=none,id=drive-virtio-layer1"  \
+    "-device"   "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=layer.1,device_id=layer.$layer1" \

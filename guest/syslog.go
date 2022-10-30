@@ -21,13 +21,13 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	case logrus.ErrorLevel:
 		prefix = "<2>"
 	case logrus.WarnLevel:
-		prefix = "<4>"
+		prefix = "<3>"
 	case logrus.InfoLevel:
-		prefix = "<5>"
+		prefix = "<4>"
 	case logrus.DebugLevel:
-		prefix = "<6>"
+		prefix = "<5>"
 	case logrus.TraceLevel:
-		prefix = "<7>"
+		prefix = "<6>"
 	}
 
 	m := strings.TrimFunc(entry.Message, func(c rune) bool {
@@ -42,7 +42,7 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 }
 
 var log = &logrus.Logger{
-	Level:     logrus.DebugLevel,
+	Level:     logrus.InfoLevel,
 	Out:       os.Stderr,
 	Formatter: &logrus.TextFormatter{},
 }

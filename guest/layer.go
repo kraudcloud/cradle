@@ -113,15 +113,12 @@ func untar(fo io.Reader, prefix string) {
 			continue
 		}
 
-		if _, err := os.Stat(hdr.Name); err == nil {
-			continue
-		}
 
 		switch hdr.Typeflag {
 		case tar.TypeLink:
-			err = os.Link(hdr.Linkname, hdr.Name)
+			err = os.Link(prefix + hdr.Linkname, hdr.Name)
 			if err != nil {
-				log.Errorf("Error creating link: %v", err)
+				log.Errorf("Error creating link: '%s' => '%s' : %v",   hdr.Name, hdr.Linkname, err)
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			f, err := os.OpenFile(hdr.Name, os.O_RDWR|os.O_CREATE, os.FileMode(hdr.Mode))
@@ -154,7 +151,9 @@ func untar(fo io.Reader, prefix string) {
 		case tar.TypeDir:
 			err = os.Mkdir(hdr.Name, os.FileMode(hdr.Mode))
 			if err != nil {
-				log.Errorf("Error creating directory: %v", err)
+				if _, err2 := os.Stat(hdr.Name); err2 != nil {
+					log.Errorf("Error creating directory: %v", err)
+				}
 			}
 		case tar.TypeFifo:
 			err = syscall.Mknod(hdr.Name, syscall.S_IFIFO|uint32(hdr.Mode), 0)

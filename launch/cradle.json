@@ -1,5 +1,5 @@
 {
-  "version": "2",
+  "version": 2,
   "pod": {
     "id": "ecef8c67-97f9-476b-9177-a05c91e102e5",
     "name": "lustrous_pond",
@@ -13,7 +13,7 @@
           "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
           "layers": [
             {
-              "id": "52dc2d59-a883-435a-8159-e3e407719f6c",
+              "id": "7b347a08-04e1-43a7-9c53-8ffb770a18fb",
               "sha256": "e22fa7015ffc893d26c6b93c485d0de59542c7dceadf768953d2bc3844cd6d64"
             }
           ]

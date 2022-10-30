@@ -18,7 +18,7 @@ pkg/bios.bin: build/qboot
 build/linux:
 	mkdir -p build
 	cd build &&\
-	git clone https://github.com/torvalds/linux.git &&\
+	git clone https://github.com/torvalds/linux.git
 
 pkg/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
@@ -32,6 +32,7 @@ pkg/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext
 	( cd build/initrd && find . | cpio -o -H newc ) > pkg/initrd
 
 test/config.tar: launch/cradle.json
+	mkdir -p test
 	tar  cf test/config.tar -C launch .
 
 build/busybox:

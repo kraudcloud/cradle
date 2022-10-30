@@ -26,7 +26,6 @@ func main_init() {
 	vmminit()
 	mountnvme()
 	unpackConfig()
-	secinit()
 	network()
 	unpackLayers()
 	pod()
@@ -84,10 +83,13 @@ func makedev() {
 		serial, err = ioutil.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
 		if err == nil {
 			serial = serial[8:]
-			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 
-			if strings.HasPrefix(string(serial), "layer.") {
-				os.Symlink("/dev/"+name, "/dev/disk/by-layer-uuid/"+string(serial[6:]))
+			a,b, ok := strings.Cut(string(serial), ".")
+			if ok {
+				os.MkdirAll( "/dev/disk/" + a,  0777)
+				os.Symlink("/dev/"+name, "/dev/disk/by-" + a + "-uuid/" + b)
+			} else {
+				os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 			}
 		}
 	}
