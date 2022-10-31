@@ -14,7 +14,8 @@
           "layers": [
             {
               "id": "4451b8f2-1d33-48ba-8403-aba9559bb6af",
-              "sha256": "0438ade5aeea533b00cd75095bec75fbc2b307bace4c89bb39b75d428637bcd8"
+              "sha256": "01d74bdf7ae529d799ad7827afb083e3f2a9a9c2799cfe891120861060161a8b",
+              "digest": "sha256:0438ade5aeea533b00cd75095bec75fbc2b307bace4c89bb39b75d428637bcd8"
             }
           ]
         },

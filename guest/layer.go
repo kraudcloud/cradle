@@ -64,7 +64,7 @@ func unpackLayers() {
 
 		pos, _ := fo.Seek(0, io.SeekEnd)
 		fo.Seek(0, io.SeekStart)
-		log.Info("cradle: extracting ", humanize.Bytes(uint64(pos)), " layer ", uuid)
+		log.Info("cradle: extracting ", humanize.Bytes(uint64(pos)), " layer ", f.Name())
 
 		var reader io.Reader = fo
 
@@ -85,8 +85,14 @@ func unpackLayers() {
 		for _, container := range CONFIG.Pod.Containers {
 			for _, layer := range container.Image.Layers {
 				if layer.ID == uuid {
-					if layer.Sha256 != hash {
-						exit(fmt.Errorf("layer %s sha256 mismatch", uuid))
+
+					parts := strings.Split(layer.Digest, ":")
+					if len(parts) != 2 || parts[0] != "sha256" {
+						log.Warnf("cannot parse digest of layer %s : %s", uuid, layer.Digest)
+						continue
+					}
+					if parts[1] != hash {
+						exit(fmt.Errorf("layer %s sha256 mismatch %s != %s", uuid, layer.Sha256, hash))
 						return
 					}
 				}

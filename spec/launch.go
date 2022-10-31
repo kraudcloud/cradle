@@ -85,6 +85,9 @@ type Layer struct {
 
 	// sha of compressed layer data (usually tar.gz)
 	Sha256 string `json:"sha256"`
+
+	// OCI image id, sha of uncompressed tar
+	Digest string `json:"digest"`
 }
 
 type Process struct {
