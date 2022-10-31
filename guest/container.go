@@ -182,6 +182,12 @@ func main_runc() {
 			}
 		}
 	}
+	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
+		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
+		log.Error("PATH: ", container.Process.Env["PATH"])
+		time.Sleep(10 * time.Minute)
+
+	}
 
 	var flatenv = []string{}
 	for k, v := range container.Process.Env {

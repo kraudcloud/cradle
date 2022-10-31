@@ -97,7 +97,7 @@ func makedev() {
 
 // prepare ephemeral nvme blocks from host
 func mountnvme() {
-	log.Info("cradle: clearing ephemeral nvme block")
+	log.Info("cradle: clearing ephemeral nvme blocks")
 
 	if _, err := os.Stat("/dev/disk/by-serial/swap"); err == nil {
 		cmd := exec.Command("/sbin/mkswap", "/dev/disk/by-serial/swap")

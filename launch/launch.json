@@ -1,20 +1,20 @@
 {
   "version": 2,
-  "id": "ecef8c67-97f9-476b-9177-a05c91e102e5",
+  "id": "6115c213-a87a-4206-9b99-0d0235ac560f",
   "pod": {
-    "name": "lustrous_pond",
+    "name": "ravishing_morning",
     "namespace": "default",
     "containers": [
       {
-        "id": "493611b7-2d25-48de-8f8f-b8fbe44501a4",
-        "name": "lustrous_pond",
-        "hostname": "lustrous_pond",
+        "id": "893aac2a-dcf2-431a-9ceb-626f0bfe218a",
+        "name": "ravishing_morning",
+        "hostname": "ravishing_morning",
         "image": {
           "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
           "layers": [
             {
-              "id": "7b347a08-04e1-43a7-9c53-8ffb770a18fb",
-              "sha256": "e22fa7015ffc893d26c6b93c485d0de59542c7dceadf768953d2bc3844cd6d64"
+              "id": "4451b8f2-1d33-48ba-8403-aba9559bb6af",
+              "sha256": "0438ade5aeea533b00cd75095bec75fbc2b307bace4c89bb39b75d428637bcd8"
             }
           ]
         },
@@ -22,19 +22,19 @@
           "cmd": [
             "sh",
             "-c",
-            "echo hello world;env;ls;ip addr;free -m"
+            "set -x ;echo yalla; ip addr; env"
           ],
-          "cwd": "/",
           "env": {
-            "PATH" :"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "HOW_FAST": "MUCHER"
-          }
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          },
+          "workdir": ""
         },
         "lifecycle": {
-          "restart_on_success": true,
-          "restart_on_failure": true,
-          "max_restarts": 1,
-          "critical":true
+          "restart_on_success": false,
+          "restart_on_failure": false,
+          "restart_delay": 0,
+          "max_restarts": 100,
+          "critical": true
         }
       }
     ]
