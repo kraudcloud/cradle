@@ -36,8 +36,8 @@ if this is an issue, you could enable loading and bake modules into initrd yours
 Customers who wish to modify bootup will likely prefer a familiar "PC-like" firmware UEFI,
 so this package provides a chain with OVMF.
 
-OVMF is significantly slower than the normal uvm boot stage,
-but offers standard features intentionally missing in uvm.
+OVMF is significantly slower than the normal uvm boot stage and requires a minimum of 512M mem,
+but offers standard features intentionally missing in qboot.
 
 
 ## secret encryption

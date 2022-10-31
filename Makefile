@@ -21,9 +21,9 @@ build/.qboot: build/qboot
 build/ovmf:
 	mkdir -p build
 	cd build &&\
-	git clone https://github.com/AMDESE/ovmf ovmf &&\
+	git clone https://github.com/tianocore/edk2.git ovmf &&\
 	cd ovmf &&\
-	git checkout svsm-preview &&\
+	git checkout edk2-stable202208 &&\
 	git submodule update --init --recursive
 
 build/.ovmf: build/ovmf
@@ -52,7 +52,7 @@ pkg/kernel: build/linux kernel-config-x86_64
 pkg/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
 	( cd build/initrd && find . | cpio -o -H newc ) > pkg/initrd
 
-test/config.tar: launch/cradle.json
+test/config.tar: launch/launch.json
 	mkdir -p test
 	tar  cf test/config.tar -C launch .
 

@@ -1,7 +1,7 @@
 {
   "version": 2,
+  "id": "ecef8c67-97f9-476b-9177-a05c91e102e5",
   "pod": {
-    "id": "ecef8c67-97f9-476b-9177-a05c91e102e5",
     "name": "lustrous_pond",
     "namespace": "default",
     "containers": [
@@ -34,10 +34,15 @@
           "restart_on_success": true,
           "restart_on_failure": true,
           "max_restarts": 1,
-          "critical":true 
+          "critical":true
         }
       }
     ]
+  },
+  "network" : {
+    "ip4" : "10.0.2.15/24",
+    "gateway4" : "10.0.2.2",
+    "nameservers" : [ "1.1.1.1"]
   }
 }
 

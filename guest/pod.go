@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
 	"os"
@@ -15,7 +14,6 @@ import (
 type Container struct {
 	Log     *Log
 	Spec    spec.Container
-	PodSpec spec.Pod
 	Pty     *os.File
 	Process *os.Process
 	Lock    sync.Mutex
@@ -25,27 +23,20 @@ var containers = make(map[string]*Container)
 var containersLock sync.Mutex
 
 func pod() {
-	f, err := os.Open("/config/cradle.json")
-	if err != nil {
-		panic(err)
+
+	if CONFIG.Pod == nil {
+		return
 	}
 
-	var config spec.Cradle
-	err = json.NewDecoder(f).Decode(&config)
-	if err != nil {
-		panic(err)
-	}
-
-	syscall.Sethostname([]byte(config.Pod.Name + "." + config.Pod.Namespace))
+	syscall.Sethostname([]byte(CONFIG.Pod.Name + "." + CONFIG.Pod.Namespace))
 
 	containersLock.Lock()
 	defer containersLock.Unlock()
 
-	for _, c := range config.Pod.Containers {
+	for _, c := range CONFIG.Pod.Containers {
 		container := Container{
 			Log:     NewLog(1024 * 1024),
 			Spec:    c,
-			PodSpec: config.Pod,
 		}
 		go container.manager()
 	}

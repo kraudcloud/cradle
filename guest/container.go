@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
@@ -26,19 +25,10 @@ func main_runc() {
 
 	id := os.Args[1]
 
-	f, err := os.Open("/config/cradle.json")
-	if err != nil {
-		panic(err)
-	}
-
-	var cradle spec.Cradle
-	err = json.NewDecoder(f).Decode(&cradle)
-	if err != nil {
-		panic(err)
-	}
+	config()
 
 	var container spec.Container
-	for _, c := range cradle.Pod.Containers {
+	for _, c := range CONFIG.Pod.Containers {
 		if c.ID == id {
 			container = c
 			break
@@ -210,7 +200,7 @@ func main_runc() {
 		cmd.Dir = "/"
 	}
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		log.Error("exec failed: ", err)
 	}
@@ -247,7 +237,7 @@ func (c *Container) prepare() error {
 	if err != nil {
 		log.Error(fmt.Sprintf("create hostname file: %s", err))
 	} else {
-		f.WriteString(c.Spec.Hostname + "." + c.PodSpec.Namespace + "\n")
+		f.WriteString(c.Spec.Hostname + "." + CONFIG.Pod.Namespace + "\n")
 		f.Close()
 	}
 
@@ -267,7 +257,7 @@ func (c *Container) prepare() error {
 		log.Error(fmt.Sprintf("create hosts file: %s", err))
 	} else {
 		f.WriteString("127.0.0.1")
-		for _, host := range c.PodSpec.Containers {
+		for _, host := range CONFIG.Pod.Containers {
 			f.WriteString(fmt.Sprintf(" %s %s", host.Hostname, host.Name))
 		}
 		f.WriteString("\n")

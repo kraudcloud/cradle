@@ -2,19 +2,21 @@
 
 package spec
 
-// the interior cradle spec
-type Cradle struct {
+// the interior launch spec
+type Launch struct {
 	// version of spec. currently 2
 	Version int `json:"version"`
 
-	Pod Pod `json:"pod"`
+	// uuid of pod
+	ID string `json:"id"`
+
+	Pod *Pod `json:"pod,omitempty"`
+
+	Network *Network `json:"network,omitempty"`
 }
 
 // pod to be launched in cradle
 type Pod struct {
-
-	// uuid of pod
-	ID string `json:"id"`
 
 	// api name of pod
 	Name string `json:"name"`
@@ -159,4 +161,12 @@ type ConfigMount struct {
 
 	// content
 	Content []byte
+}
+
+type Network struct {
+	Ip4			string `json:"ip4,omitempty"`
+	Ip6			string `json:"ip6,omitempty"`
+	Gateway4	string `json:"gw4,omitempty"`
+	Gateway6	string `json:"gw6,omitempty"`
+	Nameservers	[]string `json:"nameservers,omitempty"`
 }

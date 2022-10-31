@@ -1,32 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/vishvananda/netlink"
 	"net"
 	"os"
 )
 
-type NetConfig struct {
-	Ip4         string   `json:"ip4"`
-	Gateway4    string   `json:"gateway4"`
-	Ip6         string   `json:"ip6"`
-	Gateway6    string   `json:"gateway6"`
-	Nameservers []string `json:"nameservers"`
-}
-
 func network() {
-	f, err := os.Open("/config/network.json")
-	if err != nil {
-		log.Error(err)
-		return
-	}
 
-	var netconfig NetConfig
-	err = json.NewDecoder(f).Decode(&netconfig)
-	if err != nil {
-		log.Error("/config/network.json: ", err)
-		return
+	if CONFIG.Network == nil {
+		return;
 	}
 
 	// Set up the network
@@ -43,7 +26,7 @@ func network() {
 	}
 
 	// Set up the IPv4 address
-	addr, err := netlink.ParseAddr(netconfig.Ip4)
+	addr, err := netlink.ParseAddr(CONFIG.Network.Ip4)
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
@@ -53,7 +36,7 @@ func network() {
 	}
 
 	// Set up the IPv6 address
-	addr, err = netlink.ParseAddr(netconfig.Ip6)
+	addr, err = netlink.ParseAddr(CONFIG.Network.Ip6)
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
@@ -63,7 +46,7 @@ func network() {
 	}
 
 	// Set up gateway4
-	gateway4 := net.ParseIP(netconfig.Gateway4)
+	gateway4 := net.ParseIP(CONFIG.Network.Gateway4)
 	if gateway4 != nil {
 		route := netlink.Route{
 			LinkIndex: link.Attrs().Index,
@@ -81,7 +64,7 @@ func network() {
 	}
 
 	// Set up gateway6
-	gateway6 := net.ParseIP(netconfig.Gateway6)
+	gateway6 := net.ParseIP(CONFIG.Network.Gateway6)
 	if gateway6 != nil {
 		route := netlink.Route{
 			LinkIndex: link.Attrs().Index,
@@ -100,10 +83,9 @@ func network() {
 
 	// set up nameservers
 	os.MkdirAll("/etc/", 0755)
-	f, err = os.OpenFile("/etc/resolv.conf", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile("/etc/resolv.conf", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	defer f.Close()
-	for _, nameserver := range netconfig.Nameservers {
+	for _, nameserver := range CONFIG.Network.Nameservers {
 		f.WriteString("nameserver " + nameserver + "\n")
 	}
-
 }

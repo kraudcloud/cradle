@@ -10,7 +10,6 @@ import (
 )
 
 func shell() {
-	return
 
 	if _, err := os.Stat("/bin/sh"); errors.Is(err, os.ErrNotExist) {
 		log.Warn("no debug shell in initrd: /bin/sh not found")

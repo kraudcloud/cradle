@@ -25,7 +25,7 @@ func main_init() {
 	makedev()
 	vmminit()
 	mountnvme()
-	unpackConfig()
+	config()
 	network()
 	unpackLayers()
 	sev()
@@ -64,7 +64,6 @@ func makedev() {
 	log.Info("cradle: populating /dev")
 
 	os.MkdirAll("/dev/disk/by-serial/", 0777)
-	os.MkdirAll("/dev/disk/by-layer-uuid/", 0777)
 
 	iter, err := ioutil.ReadDir("/sys/class/block/")
 	if err != nil {
@@ -87,7 +86,7 @@ func makedev() {
 
 			a,b, ok := strings.Cut(string(serial), ".")
 			if ok {
-				os.MkdirAll( "/dev/disk/" + a,  0777)
+				os.MkdirAll( "/dev/disk/" + "by-" + a + "-uuid/",  0777)
 				os.Symlink("/dev/"+name, "/dev/disk/by-" + a + "-uuid/" + b)
 			} else {
 				os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
