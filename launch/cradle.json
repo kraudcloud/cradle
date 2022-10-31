@@ -34,7 +34,7 @@
           "restart_on_success": true,
           "restart_on_failure": true,
           "max_restarts": 1,
-          "critical": true
+          "critical":true 
         }
       }
     ]

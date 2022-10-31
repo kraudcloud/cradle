@@ -25,7 +25,7 @@ func vmm(key uint32, msg []byte) {
 }
 
 func vmm1() {
-	sock, err := vsock.Dial(vsock.Host, 1444, nil)
+	sock, err := vsock.Dial(vsock.Host, 9, nil)
 	if err != nil {
 		log.Errorf("vmm: %v", err)
 		return

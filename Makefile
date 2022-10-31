@@ -1,6 +1,8 @@
+FIRMWARE=qboot
+
 all: pkg.tar
 
-pkg.tar: pkg/bios.bin pkg/kernel pkg/initrd test/config.tar
+pkg.tar: pkg/pflash0 pkg/kernel pkg/initrd test/config.tar
 	cd pkg &&\
 	docker build . -t cradle:$$(git describe --tags --always)
 
@@ -9,11 +11,30 @@ build/qboot:
 	cd build &&\
 	git clone https://github.com/bonzini/qboot.git
 
-pkg/bios.bin: build/qboot
+build/.qboot: build/qboot
 	cd build/qboot &&\
 	git checkout 8ca302e86d685fa05b16e2b208888243da319941 &&\
 	meson build && ninja -C build
-	cp build/qboot/build/bios.bin pkg/bios.bin
+	cp build/qboot/build/bios.bin pkg/pflash0
+	touch $@
+
+build/ovmf:
+	mkdir -p build
+	cd build &&\
+	git clone https://github.com/AMDESE/ovmf ovmf &&\
+	cd ovmf &&\
+	git checkout svsm-preview &&\
+	git submodule update --init --recursive
+
+build/.ovmf: build/ovmf
+	cd build/ovmf &&\
+	make -C BaseTools &&\
+	bash -c '. ./edksetup.sh --reconfig &&  build -b RELEASE -q --cmd-len=64436 -n20 -t GCC5 -a X64 -p OvmfPkg/OvmfPkgX64.dsc'
+	cp -f build/ovmf/Build/OvmfX64/RELEASE_*/FV/OVMF_CODE.fd pkg/pflash0
+	cp -f build/ovmf/Build/OvmfX64/RELEASE_*/FV/OVMF_VARS.fd pkg/pflash1
+	touch $@
+
+pkg/pflash0: build/.$(FIRMWARE)
 
 build/linux:
 	mkdir -p build
@@ -67,4 +88,6 @@ build/initrd/bin/mkfs.ext4: build/e2fsprogs-1.46.5
 	cp misc/mke2fs ../initrd/bin/mkfs.ext4
 
 
+
 .PHONY:
+

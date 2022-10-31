@@ -28,6 +28,7 @@ func main_init() {
 	unpackConfig()
 	network()
 	unpackLayers()
+	sev()
 	pod()
 	shell()
 

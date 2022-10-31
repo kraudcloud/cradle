@@ -17,7 +17,7 @@ the kraudcloud uvm.
 ## custom kernel
 
 if you want to run a custom kernel config, drop it into kernel-config-x86_64 and type make.
-note that the uvm depends on non standard kernel options, so ideally derive your config from the existing one
+note that uvm depends on non standard kernel options, so ideally derive your config from the existing one
 
     make
     cd build/linux/
@@ -29,6 +29,15 @@ note that the uvm depends on non standard kernel options, so ideally derive your
 
 there is no runtime loading, so all modules must be built in static.
 if this is an issue, you could enable loading and bake modules into initrd yourself.
+
+
+## bootloader
+
+Customers who wish to modify bootup will likely prefer a familiar "PC-like" firmware UEFI,
+so this package provides a chain with OVMF.
+
+OVMF is significantly slower than the normal uvm boot stage,
+but offers standard features intentionally missing in uvm.
 
 
 ## secret encryption
