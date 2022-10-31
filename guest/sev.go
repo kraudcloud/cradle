@@ -1,14 +1,13 @@
 package main
 
 import (
-	"github.com/google/go-sev-guest/client"
-	"github.com/google/go-sev-guest/abi"
 	"encoding/base64"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"github.com/google/go-sev-guest/abi"
+	"github.com/google/go-sev-guest/client"
 	"os"
 )
-
 
 func sev() {
 	dev, err := client.OpenDevice()

@@ -3,22 +3,21 @@
 package main
 
 import (
+	"context"
+	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
 	"github.com/mdlayher/vsock"
-	"github.com/aep/yeet"
-	"time"
-	"context"
-	"os"
-	"net"
 	"io"
+	"net"
+	"os"
+	"time"
 )
 
-
-var VMM  = make(chan yeet.Message, 2)
+var VMM = make(chan yeet.Message, 2)
 
 func vmm(key uint32, msg []byte) {
 	select {
-	case VMM <- yeet.Message{Key:key, Value:msg}:
+	case VMM <- yeet.Message{Key: key, Value: msg}:
 	default:
 		log.Error("vmm: dropped message")
 	}
@@ -31,9 +30,9 @@ func vmm1() {
 		return
 	}
 
-	yc, err := yeet.Connect(sock, yeet.Hello("cradle"), yeet.Keepalive(500 * time.Millisecond))
+	yc, err := yeet.Connect(sock, yeet.Hello("cradle"), yeet.Keepalive(500*time.Millisecond))
 	if err != nil {
-		sock.Close();
+		sock.Close()
 		log.Errorf("vmm: %v", err)
 		return
 	}
@@ -56,7 +55,7 @@ func vmm1() {
 
 	vmm(spec.YC_KEY_STARTUP, []byte{})
 
-	for ;; {
+	for {
 		m, err := yc.Read()
 		if err != nil {
 			log.Errorf("vmm: %v", err)
@@ -69,11 +68,10 @@ func vmm1() {
 func vmminit() {
 	go func() {
 		for {
-			vmm1();
+			vmm1()
 			time.Sleep(time.Second)
 		}
 	}()
-
 
 	os.MkdirAll("/vfs/var/run/", 0755)
 	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")

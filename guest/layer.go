@@ -3,9 +3,11 @@
 package main
 
 import (
-	"compress/gzip"
 	"archive/tar"
 	"bufio"
+	"compress/gzip"
+	"crypto/sha256"
+	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/xattr"
 	"io"
@@ -14,8 +16,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"crypto/sha256"
-	"fmt"
 )
 
 const (
@@ -33,10 +33,17 @@ func unpackLayers() {
 	}
 
 	for _, f := range iter {
-		name  := strings.Split(f.Name(), ".")
+		name := strings.Split(f.Name(), ".")
 
 		if len(name) < 2 {
 			continue
+		}
+
+		uuid := name[0]
+
+		if name[len(name)-1] == "extfs" {
+			os.MkdirAll("/cache/layers/"+uuid, 0755)
+			syscall.Mount("/dev/disk/by-layer-uuid/"+f.Name(), "/cache/layers/"+uuid, "ext4", syscall.MS_RDONLY, "")
 		}
 
 		gz := false
@@ -49,16 +56,12 @@ func unpackLayers() {
 			continue
 		}
 
-
-		uuid := name[0]
-
-
-		os.MkdirAll("/cache/layers/"+ uuid, 0755)
+		os.MkdirAll("/cache/layers/"+uuid, 0755)
 
 		fo, err := os.Open("/dev/disk/by-layer-uuid/" + f.Name())
 		if err != nil {
 			exit(err)
-			return;
+			return
 		}
 		defer fo.Close()
 
@@ -72,7 +75,7 @@ func unpackLayers() {
 			reader, err = gzip.NewReader(reader)
 			if err != nil {
 				exit(err)
-				return;
+				return
 			}
 		}
 
@@ -151,12 +154,11 @@ func untar(fo io.Reader, prefix string) {
 			continue
 		}
 
-
 		switch hdr.Typeflag {
 		case tar.TypeLink:
-			err = os.Link(prefix + hdr.Linkname, hdr.Name)
+			err = os.Link(prefix+hdr.Linkname, hdr.Name)
 			if err != nil {
-				log.Errorf("Error creating link: '%s' => '%s' : %v",   hdr.Name, hdr.Linkname, err)
+				log.Errorf("Error creating link: '%s' => '%s' : %v", hdr.Name, hdr.Linkname, err)
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			f, err := os.OpenFile(hdr.Name, os.O_RDWR|os.O_CREATE, os.FileMode(hdr.Mode))

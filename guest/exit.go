@@ -3,11 +3,11 @@
 package main
 
 import (
+	"github.com/kraudcloud/cradle/spec"
 	"os"
 	"os/exec"
 	"syscall"
 	"time"
-	"github.com/kraudcloud/cradle/spec"
 )
 
 func exit(err error) {

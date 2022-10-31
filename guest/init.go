@@ -84,10 +84,10 @@ func makedev() {
 		if err == nil {
 			serial = serial[8:]
 
-			a,b, ok := strings.Cut(string(serial), ".")
+			a, b, ok := strings.Cut(string(serial), ".")
 			if ok {
-				os.MkdirAll( "/dev/disk/" + "by-" + a + "-uuid/",  0777)
-				os.Symlink("/dev/"+name, "/dev/disk/by-" + a + "-uuid/" + b)
+				os.MkdirAll("/dev/disk/"+"by-"+a+"-uuid/", 0777)
+				os.Symlink("/dev/"+name, "/dev/disk/by-"+a+"-uuid/"+b)
 			} else {
 				os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 			}

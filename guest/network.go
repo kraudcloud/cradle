@@ -9,7 +9,7 @@ import (
 func network() {
 
 	if CONFIG.Network == nil {
-		return;
+		return
 	}
 
 	// Set up the network

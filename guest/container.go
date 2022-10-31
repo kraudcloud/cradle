@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"bytes"
 )
 
 func main_runc() {
@@ -339,7 +339,6 @@ func (c *Container) run() error {
 	fmt.Print("--------\n")
 	os.Stdout.Sync()
 	time.Sleep(10 * time.Millisecond)
-
 
 	var lastlog bytes.Buffer
 	lastlog.Write([]byte(c.Spec.ID + "\n"))

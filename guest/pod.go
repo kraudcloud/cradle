@@ -35,8 +35,8 @@ func pod() {
 
 	for _, c := range CONFIG.Pod.Containers {
 		container := Container{
-			Log:     NewLog(1024 * 1024),
-			Spec:    c,
+			Log:  NewLog(1024 * 1024),
+			Spec: c,
 		}
 		go container.manager()
 	}

@@ -2,19 +2,18 @@
 
 package main
 
-
 import (
-	"os"
 	"encoding/json"
-	"github.com/kraudcloud/cradle/spec"
 	"fmt"
+	"github.com/kraudcloud/cradle/spec"
+	"os"
 )
 
 var CONFIG spec.Launch
 
 func config() {
 
-	if _ , err := os.Stat("/config/launch.json"); err != nil {
+	if _, err := os.Stat("/config/launch.json"); err != nil {
 		os.MkdirAll("/config/", 0755)
 		fo, err := os.Open("/dev/disk/by-serial/config")
 		if err != nil {
@@ -38,4 +37,3 @@ func config() {
 		return
 	}
 }
-
