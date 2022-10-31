@@ -3,6 +3,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"archive/tar"
 	"bufio"
 	"github.com/dustin/go-humanize"
@@ -13,6 +14,8 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"crypto/sha256"
+	"fmt"
 )
 
 const (
@@ -30,25 +33,66 @@ func unpackLayers() {
 	}
 
 	for _, f := range iter {
-		name := f.Name()
+		name  := strings.Split(f.Name(), ".")
 
-		os.MkdirAll("/cache/layers/"+name, 0755)
-
-		fo, err := os.Open("/dev/disk/by-layer-uuid/" + name)
-		if err != nil {
-			log.Errorf("Open /dev/disk/by-layer-uuid/%s : %v", name, err)
+		if len(name) < 2 {
 			continue
+		}
+
+		gz := false
+		if name[len(name)-1] == "gz" {
+			gz = true
+			name = name[:len(name)-1]
+		}
+
+		if name[len(name)-1] != "tar" {
+			continue
+		}
+
+
+		uuid := name[0]
+
+
+		os.MkdirAll("/cache/layers/"+ uuid, 0755)
+
+		fo, err := os.Open("/dev/disk/by-layer-uuid/" + f.Name())
+		if err != nil {
+			exit(err)
+			return;
 		}
 		defer fo.Close()
 
 		pos, _ := fo.Seek(0, io.SeekEnd)
 		fo.Seek(0, io.SeekStart)
+		log.Info("cradle: extracting ", humanize.Bytes(uint64(pos)), " layer ", uuid)
 
-		log.Info("cradle: extracting ", humanize.Bytes(uint64(pos)), " layer ", name)
+		var reader io.Reader = fo
 
-		untar(fo, "/cache/layers/"+name+"/")
+		if gz {
+			reader, err = gzip.NewReader(reader)
+			if err != nil {
+				exit(err)
+				return;
+			}
+		}
+
+		hasher := sha256.New()
+		reader = io.TeeReader(reader, hasher)
+
+		untar(reader, "/cache/layers/"+uuid+"/")
+
+		hash := fmt.Sprintf("%x", hasher.Sum(nil))
+		for _, container := range CONFIG.Pod.Containers {
+			for _, layer := range container.Image.Layers {
+				if layer.ID == uuid {
+					if layer.Sha256 != hash {
+						exit(fmt.Errorf("layer %s sha256 mismatch", uuid))
+						return
+					}
+				}
+			}
+		}
 	}
-
 }
 
 func untar(fo io.Reader, prefix string) {

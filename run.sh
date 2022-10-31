@@ -12,7 +12,7 @@ if [ ! -e swap.img ]; then
     dd if=/dev/zero of=swap.img bs=1M count=1000
 fi
 
-layer1=4451b8f2-1d33-48ba-8403-aba9559bb6af
+layer1=layer.4451b8f2-1d33-48ba-8403-aba9559bb6af.tar.gz
 
 qemu-system-x86_64 \
     "-nographic" "-nodefaults" "-no-user-config"  "-nographic"  "-enable-kvm"  "-no-reboot" \
@@ -37,5 +37,5 @@ qemu-system-x86_64 \
     "-device"   "virtio-blk-device,drive=drive-virtio-disk-swap,id=virtio-disk-swap,serial=swap" \
     "-drive"    "format=raw,aio=threads,file=config.tar,readonly=off,if=none,id=drive-virtio-disk-config" \
     "-device"   "virtio-blk-device,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config" \
-    "-drive"    "format=raw,aio=threads,file=layer_$layer1,readonly=on,if=none,id=drive-virtio-layer1"  \
-    "-device"   "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=layer.1,device_id=layer.$layer1" \
+    "-drive"    "format=raw,aio=threads,file=$layer1,readonly=on,if=none,id=drive-virtio-layer1"  \
+    "-device"   "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=layer.1,device_id=$layer1" \
