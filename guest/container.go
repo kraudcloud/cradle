@@ -194,22 +194,36 @@ func main_runc() {
 		flatenv = append(flatenv, k+"="+v)
 	}
 
-	cmd := exec.Command(container.Process.Cmd[0], container.Process.Cmd[1:]...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: root}
-	cmd.Env = flatenv
-	cmd.Dir = container.Process.Workdir
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
-	if cmd.Dir == "" {
-		cmd.Dir = "/"
+	err := syscall.Chroot(root)
+	if err != nil {
+		log.Errorf("runc: chroot failed: %s", err)
+		return
 	}
 
-	err := cmd.Run()
+
+	if container.Process.Workdir == "" {
+		container.Process.Workdir = "/"
+	}
+	err = syscall.Chdir(container.Process.Workdir)
+	if err != nil {
+		log.Warnf("runc: chdir failed: %s", err)
+	}
+
+	err = syscall.Exec(container.Process.Cmd[0], container.Process.Cmd, flatenv)
 	if err != nil {
 		log.Error("exec failed: ", err)
 	}
+}
+
+func (c *Container) Resize (w int, h int) error {
+	if c.Pty == nil {
+		return nil
+	}
+	return pty.Setsize(c.Pty, &pty.Winsize{
+		Rows: uint16(h),
+		Cols: uint16(w),
+	})
 }
 
 func (c *Container) prepare() error {
@@ -307,23 +321,64 @@ func (c *Container) run() error {
 		//},},
 	}
 
-	ptmx, err := pty.Start(cmd)
-	if err != nil {
-		return err
-	}
-	defer ptmx.Close()
 
-	c.Lock.Lock()
-	c.Pty = ptmx
-	c.Process = cmd.Process
-	c.Lock.Unlock()
-
-	go func() {
-		n, err := io.Copy(c.Log, c.Pty)
-		if false {
-			log.Debugf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
+	if c.Spec.Process.Tty {
+		ptmx, err := pty.Start(cmd)
+		if err != nil {
+			return err
 		}
-	}()
+		defer ptmx.Close()
+
+		c.Lock.Lock()
+		c.Pty = ptmx
+		c.Process = cmd.Process
+		c.Lock.Unlock()
+
+		go func() {
+			n, err := io.Copy(c.Stdout, c.Pty)
+			if false {
+				log.Debugf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
+			}
+		}()
+	} else {
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return err
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			return err
+		}
+		c.Stdin, err  = cmd.StdinPipe()
+		if err != nil {
+			return err
+		}
+
+		err = cmd.Start()
+		if err != nil {
+			return err
+		}
+
+		c.Lock.Lock()
+		c.Process = cmd.Process
+		c.Lock.Unlock()
+
+		go func() {
+			n, err := io.Copy(c.Stdout, stderr)
+			if false {
+				log.Debugf("container %s stdout ended after reading %d bytes: %s", c.Spec.ID, n, err)
+			}
+		}()
+
+		go func() {
+			n, err := io.Copy(c.Stdout, stdout)
+			if false {
+				log.Debugf("container %s stderr ended after reading %d bytes: %s", c.Spec.ID, n, err)
+			}
+		}()
+	}
+
+
 
 	state, err := cmd.Process.Wait()
 	if err != nil {
@@ -335,7 +390,7 @@ func (c *Container) run() error {
 	c.Pty.Close()
 	os.Stdout.Sync()
 	fmt.Print("\n--------\n")
-	c.Log.Dump(os.Stdout)
+	c.Stdout.Dump(os.Stdout)
 	fmt.Print("--------\n")
 	os.Stdout.Sync()
 	time.Sleep(10 * time.Millisecond)
@@ -344,7 +399,7 @@ func (c *Container) run() error {
 	lastlog.Write([]byte(c.Spec.ID + "\n"))
 	fmt.Fprintf(&lastlog, "%d\n", state.ExitCode())
 	lastlog.Write([]byte("\n\n"))
-	c.Log.Dump(&lastlog)
+	c.Stdout.Dump(&lastlog)
 	if lastlog.Len() > 65000 {
 		lastlog.Truncate(65000)
 	}

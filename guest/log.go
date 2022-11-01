@@ -4,9 +4,12 @@ package main
 
 import (
 	"io"
+	"sync"
+	"net/http"
 )
 
 type Log struct {
+	lock   sync.Mutex
 	direct map[io.Writer]bool
 	buffer []byte
 	w      int
@@ -23,13 +26,19 @@ func NewLog(size int) *Log {
 }
 
 func (self *Log) Write(p []byte) (n int, err error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	var orgsize = len(p)
 
 	for d := range self.direct {
 		_, err := d.Write(p)
 		if err != nil {
+			log.Errorf("log write to attached failed: %v", err)
 			delete(self.direct, d)
+		}
+		if flusher, ok := d.(http.Flusher); ok {
+			flusher.Flush()
 		}
 	}
 
@@ -49,6 +58,9 @@ func (self *Log) Write(p []byte) (n int, err error) {
 }
 
 func (self *Log) Close() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	for d := range self.direct {
 		c, _ := d.(io.Closer)
 		if c != nil {
@@ -59,21 +71,31 @@ func (self *Log) Close() error {
 }
 
 func (self *Log) Dump(w io.Writer) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	if self.full {
 		w.Write(self.buffer[self.w:])
 	}
 	w.Write(self.buffer[:self.w])
+
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 func (self *Log) Attach(w io.Writer) {
-	if self.full {
-		w.Write(self.buffer[self.w:])
-	}
-	w.Write(self.buffer[:self.w])
+	self.Dump(w)
+
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	self.direct[w] = true
 }
 
 func (self *Log) Detach(w io.Writer) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	delete(self.direct, w)
 }

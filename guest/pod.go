@@ -9,18 +9,22 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"io"
 )
 
 type Container struct {
-	Log     *Log
 	Spec    spec.Container
+
+	Stdout  *Log
+	Stdin   io.WriteCloser
+
+	Lock    sync.Mutex
 	Pty     *os.File
 	Process *os.Process
-	Lock    sync.Mutex
 }
 
-var containers = make(map[string]*Container)
-var containersLock sync.Mutex
+var CONTAINERS = make(map[string]*Container)
+var CONTAINERS_LOCK sync.Mutex
 
 func pod() {
 
@@ -30,17 +34,18 @@ func pod() {
 
 	syscall.Sethostname([]byte(CONFIG.Pod.Name + "." + CONFIG.Pod.Namespace))
 
-	containersLock.Lock()
-	defer containersLock.Unlock()
+	CONTAINERS_LOCK.Lock()
+	defer CONTAINERS_LOCK.Unlock()
 
 	for _, c := range CONFIG.Pod.Containers {
-		container := Container{
-			Log:  NewLog(1024 * 1024),
+		container := &Container{
+			Stdout:  NewLog(1024 * 1024),
 			Spec: c,
 		}
-		go container.manager()
-	}
 
+		go container.manager()
+		CONTAINERS[c.ID] = container
+	}
 }
 
 func (c *Container) manager() {

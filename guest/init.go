@@ -16,7 +16,7 @@ func main_init() {
 
 	lo, err := os.Create("/dev/kmsg")
 	if err == nil {
-		log.Out = lo
+		log.Out = &SyncWriter{lo}
 		log.Formatter = &Formatter{}
 	}
 	log.Println("\033[1;34mKRAUDCLOUD CRADLE\033[0m")
@@ -27,10 +27,11 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
-	unpackLayers()
 	sev()
+	unpackLayers()
+	go vdocker()
+	go shell()
 	pod()
-	shell()
 
 	for {
 		time.Sleep(time.Minute)

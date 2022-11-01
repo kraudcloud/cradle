@@ -20,15 +20,16 @@
           ]
         },
         "process": {
+          "tty": false,
           "cmd": [
             "sh",
             "-c",
-            "set -x ;echo yalla; ip addr; env"
+            "while true; do echo 'beep world!'; sleep 1; done"
           ],
           "env": {
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           },
-          "workdir": ""
+          "workdir": "/home"
         },
         "lifecycle": {
           "restart_on_success": false,

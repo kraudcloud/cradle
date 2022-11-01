@@ -23,7 +23,7 @@ func vmm(key uint32, msg []byte) {
 	}
 }
 
-func vmm1() {
+func vmmOut1() {
 	sock, err := vsock.Dial(vsock.Host, 9, nil)
 	if err != nil {
 		log.Errorf("vmm: %v", err)
@@ -66,12 +66,21 @@ func vmm1() {
 }
 
 func vmminit() {
+	return
 	go func() {
 		for {
-			vmm1()
+			vmmOut1()
 			time.Sleep(time.Second)
 		}
 	}()
+
+
+
+
+
+
+
+
 
 	os.MkdirAll("/vfs/var/run/", 0755)
 	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")

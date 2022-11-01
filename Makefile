@@ -46,7 +46,7 @@ pkg/kernel: build/linux kernel-config-x86_64
 	git checkout v6.1-rc2 &&\
 	cp ../../kernel-config-x86_64 .config &&\
 	make oldconfig &&\
-	make -j20
+	make -j10
 	cp build/linux/arch/x86_64/boot/bzImage pkg/kernel
 
 pkg/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4

@@ -15,8 +15,7 @@ fi
 layer1=layer.4451b8f2-1d33-48ba-8403-aba9559bb6af.tar.gz
 
 qemu-system-x86_64 \
-    "-nographic" "-nodefaults" "-no-user-config"  "-nographic"  "-enable-kvm"  "-no-reboot" \
-    "-no-acpi" \
+    "-nographic" "-nodefaults" "-no-user-config"  "-nographic"  "-enable-kvm"  "-no-reboot" "-no-acpi" \
     "-cpu"      "host" \
     "-M"        "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off" \
     "-smp"      "2" \
@@ -26,7 +25,7 @@ qemu-system-x86_64 \
     "-device"   "virtconsole,chardev=virtiocon0" \
     "-kernel"   "../pkg/kernel" \
     "-initrd"   "../pkg/initrd" \
-    "-append"   "earlyprintk=hvc0 console=hvc0" \
+    "-append"   "earlyprintk=hvc0 console=hvc0 loglevel=5" \
     "-device"   "virtio-net-device,netdev=eth0" \
     "-netdev"   "user,id=eth0" \
     "-device"   "vhost-vsock-device,id=vsock1,guest-cid=1123" \

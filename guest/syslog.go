@@ -46,3 +46,15 @@ var log = &logrus.Logger{
 	Out:       os.Stderr,
 	Formatter: &logrus.TextFormatter{},
 }
+
+
+
+
+type SyncWriter struct {
+	Writer *os.File
+}
+
+func (w *SyncWriter) Write(p []byte) (n int, err error) {
+	defer w.Writer.Sync()
+	return w.Writer.Write(p)
+}

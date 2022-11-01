@@ -100,6 +100,9 @@ type Process struct {
 
 	// working directory
 	Workdir string `json:"workdir"`
+
+	// run in pty
+	Tty bool `json:"tty"`
 }
 
 type Lifecycle struct {
