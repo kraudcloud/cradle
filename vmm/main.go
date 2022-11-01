@@ -2,19 +2,17 @@
 
 package main
 
-
 import (
-	"github.com/mdlayher/vsock"
+	"fmt"
 	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
-	"fmt"
-	"time"
-	"os"
-	"io/ioutil"
+	"github.com/mdlayher/vsock"
 	"io"
+	"io/ioutil"
 	"net"
+	"os"
+	"time"
 )
-
 
 func main() {
 	if os.Args[1] == "sdn" {
@@ -26,17 +24,13 @@ func main() {
 	}
 }
 
-
-
 func main_docker() {
-
 
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(dir)
-
 
 	l, err := net.Listen("tcp", "0.0.0.0:8665")
 	if err != nil {
@@ -45,7 +39,6 @@ func main_docker() {
 
 	fmt.Println("DOCKER_HOST=tcp://localhost:8665")
 
-
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -53,28 +46,26 @@ func main_docker() {
 		}
 
 		go func() {
+			fmt.Println("start")
 			defer conn.Close()
-			vss, err := vsock.Dial(1123, 292 , nil)
+			vss, err := vsock.Dial(1123, 292, nil)
 			if err != nil {
 				panic(err)
 			}
 			defer vss.Close()
 
 			go func() {
-				defer vss.Close()
-				io.Copy(vss, conn)
+				defer vss.CloseWrite()
+				_, err := io.Copy(vss, conn)
+				fmt.Println("end 2 ", err)
 			}()
 
-			io.Copy(conn, vss)
+			_, err = io.Copy(conn, vss)
+			fmt.Println("end 1", err)
 		}()
 	}
 
-
-
-
-
 }
-
 
 func main_sdn() {
 
@@ -89,12 +80,12 @@ func main_sdn() {
 			panic(err)
 		}
 
-		vm:=  conn.RemoteAddr()
+		vm := conn.RemoteAddr()
 
 		fmt.Printf("[%s] connect\n", vm)
 
 		go func() {
-			yc, err := yeet.Connect(conn, yeet.Hello("simulator,1"), yeet.Keepalive(500 * time.Millisecond))
+			yc, err := yeet.Connect(conn, yeet.Hello("simulator,1"), yeet.Keepalive(500*time.Millisecond))
 			if err != nil {
 				panic(err)
 			}

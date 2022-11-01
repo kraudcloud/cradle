@@ -4,8 +4,8 @@ package main
 
 import (
 	"io"
-	"sync"
 	"net/http"
+	"sync"
 )
 
 type Log struct {

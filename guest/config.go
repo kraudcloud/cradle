@@ -36,4 +36,22 @@ func config() {
 		exit(fmt.Errorf("/config/launch.json : %w", err))
 		return
 	}
+
+	for _, container := range CONFIG.Pod.Containers {
+
+		if container.Process.Env == nil {
+			container.Process.Env = map[string]string{}
+		}
+		if container.Process.Env["PATH"] == "" {
+			container.Process.Env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		}
+		if container.Process.Env["TERM"] == "" {
+			container.Process.Env["TERM"] = "xterm"
+		}
+		if container.Process.Env["HOME"] == "" {
+			container.Process.Env["HOME"] = "/root"
+		}
+
+	}
+
 }

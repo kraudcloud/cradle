@@ -13,6 +13,8 @@ func main() {
 		main_init()
 	case "runc":
 		main_runc()
+	case "nsenter":
+		main_nsenter()
 	default:
 		panic("no applet " + filepath.Base(os.Args[0]))
 	}

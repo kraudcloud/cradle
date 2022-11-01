@@ -73,6 +73,7 @@ build/initrd/init: .PHONY
 	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init -asmflags -trimpath
 	mkdir -p build/initrd/bin
 	ln -sf ../init build/initrd/bin/runc
+	ln -sf ../init build/initrd/bin/nsenter
 
 
 build/e2fsprogs-1.46.5:

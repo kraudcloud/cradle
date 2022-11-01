@@ -5,22 +5,24 @@ package main
 import (
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
+	"io"
 	"os"
 	"sync"
 	"syscall"
 	"time"
-	"io"
 )
 
 type Container struct {
-	Spec    spec.Container
+	Spec spec.Container
 
-	Stdout  *Log
-	Stdin   io.WriteCloser
+	Stdout *Log
+	Stdin  io.WriteCloser
 
 	Lock    sync.Mutex
 	Pty     *os.File
 	Process *os.Process
+
+	ExecRequests map[uint64]*Exec
 }
 
 var CONTAINERS = make(map[string]*Container)
@@ -39,8 +41,9 @@ func pod() {
 
 	for _, c := range CONFIG.Pod.Containers {
 		container := &Container{
-			Stdout:  NewLog(1024 * 1024),
-			Spec: c,
+			Stdout:       NewLog(1024 * 1024),
+			Spec:         c,
+			ExecRequests: make(map[uint64]*Exec),
 		}
 
 		go container.manager()

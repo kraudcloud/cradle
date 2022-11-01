@@ -74,14 +74,6 @@ func vmminit() {
 		}
 	}()
 
-
-
-
-
-
-
-
-
 	os.MkdirAll("/vfs/var/run/", 0755)
 	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")
 	if err != nil {

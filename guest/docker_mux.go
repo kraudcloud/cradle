@@ -9,7 +9,7 @@ import (
 )
 
 type DockerMux struct {
-	inner		io.Writer
+	inner       io.Writer
 	expect_more uint32
 }
 
@@ -59,7 +59,6 @@ func (m *DockerMux) Write(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-
 
 	flusher, ok := m.inner.(http.Flusher)
 	if ok {

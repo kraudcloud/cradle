@@ -47,9 +47,6 @@ var log = &logrus.Logger{
 	Formatter: &logrus.TextFormatter{},
 }
 
-
-
-
 type SyncWriter struct {
 	Writer *os.File
 }

@@ -185,8 +185,6 @@ func main_runc() {
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
 		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
 		log.Error("PATH: ", container.Process.Env["PATH"])
-		time.Sleep(10 * time.Minute)
-
 	}
 
 	var flatenv = []string{}
@@ -194,13 +192,11 @@ func main_runc() {
 		flatenv = append(flatenv, k+"="+v)
 	}
 
-
 	err := syscall.Chroot(root)
 	if err != nil {
 		log.Errorf("runc: chroot failed: %s", err)
 		return
 	}
-
 
 	if container.Process.Workdir == "" {
 		container.Process.Workdir = "/"
@@ -216,7 +212,7 @@ func main_runc() {
 	}
 }
 
-func (c *Container) Resize (w int, h int) error {
+func (c *Container) Resize(w int, h int) error {
 	if c.Pty == nil {
 		return nil
 	}
@@ -321,7 +317,6 @@ func (c *Container) run() error {
 		//},},
 	}
 
-
 	if c.Spec.Process.Tty {
 		ptmx, err := pty.Start(cmd)
 		if err != nil {
@@ -349,7 +344,7 @@ func (c *Container) run() error {
 		if err != nil {
 			return err
 		}
-		c.Stdin, err  = cmd.StdinPipe()
+		c.Stdin, err = cmd.StdinPipe()
 		if err != nil {
 			return err
 		}
@@ -377,8 +372,6 @@ func (c *Container) run() error {
 			}
 		}()
 	}
-
-
 
 	state, err := cmd.Process.Wait()
 	if err != nil {
