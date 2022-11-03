@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/kraudcloud/cradle/spec"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -44,9 +45,21 @@ func volumes() {
 			continue
 		}
 
-		log.Printf("cradle: probing volume %s", uuid)
+		var ref spec.BlockVolume
+		for _, v := range CONFIG.Pod.BlockVolumes {
+			if v.ID == uuid {
+				ref = v
+				break
+			}
+		}
 
-		os.MkdirAll("/var/lib/docker/volumes/"+uuid, 0755)
+		if ref.Name == "" {
+			continue
+		}
+
+		os.Symlink("/dev/disk/volume/"+f.Name(), "/dev/disk/volume/"+ref.Name)
+
+		log.Printf("cradle: probing volume %s", uuid)
 
 		cmd := exec.Command("/sbin/blkid", "/dev/disk/volume/"+f.Name())
 		out, err := cmd.Output()
@@ -89,7 +102,7 @@ func volumes() {
 		isMounted := false
 		for _, container := range CONFIG.Pod.Containers {
 			for _, m := range container.BlockVolumeMounts {
-				if m.BlockVolumeID == uuid {
+				if m.BlockVolumeName == ref.Name {
 					isMounted = true
 					break
 				}
@@ -107,12 +120,14 @@ func volumes() {
 			}
 		}
 
-		err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+uuid+"/", "ext4", 0, "")
+		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name, 0755)
+
+		err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "ext4", 0, "")
 		if err != nil {
 			log.Errorf("mount: %v", err)
 			continue
 		}
-		os.MkdirAll("/var/lib/docker/volumes/"+uuid+"/_data", 0755)
+		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
 
 	}
 }

@@ -36,6 +36,12 @@ type BlockVolume struct {
 
 	// uuid of block volume
 	ID string `json:"id"`
+
+	// name referenced inside container
+	Name string `json:"name"`
+
+	// hypervisor mode
+	Class string `json:"class"`
 }
 
 // the container spec
@@ -128,8 +134,8 @@ type Lifecycle struct {
 
 type BlockVolumeMount struct {
 
-	// id of block volume
-	BlockVolumeID string `json:"block_volume_id"`
+	// name of block volume
+	BlockVolumeName  string `json:"block_volume_name"`
 
 	// path inside the volume
 	VolumePath string `json:"volume_path"`

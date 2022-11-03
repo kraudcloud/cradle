@@ -152,7 +152,7 @@ func main_runc() {
 
 	for _, m := range container.BlockVolumeMounts {
 
-		vp := filepath.Join("/var/lib/docker/volumes/", m.BlockVolumeID, "_data", m.VolumePath)
+		vp := filepath.Join("/var/lib/docker/volumes/", m.BlockVolumeName, "_data", m.VolumePath)
 		gp := filepath.Join("/cache/containers/", container.ID, "root", m.GuestPath)
 
 		os.MkdirAll(vp, 0755)
