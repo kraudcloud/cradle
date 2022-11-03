@@ -24,7 +24,7 @@
           "cmd": [
             "sh",
             "-c",
-            "while true; do echo 'beep world!'; sleep 1; done"
+            "echo yalla; env"
           ],
           "env": {
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

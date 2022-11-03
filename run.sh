@@ -20,6 +20,7 @@ if [ ! -e $volume1 ]; then
 fi
 
 
+
 qemu-system-x86_64 \
     "-nographic" "-nodefaults" "-no-user-config"  "-nographic"  "-enable-kvm"  "-no-reboot" "-no-acpi" \
     "-cpu"      "host" \
@@ -29,6 +30,7 @@ qemu-system-x86_64 \
     "-chardev"  "stdio,id=virtiocon0" \
     "-device"   "virtio-serial-device" \
     "-device"   "virtconsole,chardev=virtiocon0" \
+    "-bios"     "../pkg/pflash0" \
     "-kernel"   "../pkg/kernel" \
     "-initrd"   "../pkg/initrd" \
     "-append"   "earlyprintk=hvc0 console=hvc0 loglevel=5" \
