@@ -1,0 +1,26 @@
+run:
+  build-tags:
+    - nautilus
+  tests: true
+  timeout: 5m
+linters:
+  enable:
+  - gosimple
+  - govet
+  - staticcheck
+
+  - misspell
+  - exportloopref
+  - nosprintfhostport
+  - makezero
+  - scopelint
+  disable:
+    - errcheck
+issues:
+  exclude:
+    - SA1029
+    - SA1019
+    - S1002
+    - SA4006
+    - S1023
+    - S1019
