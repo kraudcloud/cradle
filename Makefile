@@ -49,28 +49,35 @@ pkg/kernel: build/linux kernel-config-x86_64
 	make -j10
 	cp build/linux/arch/x86_64/boot/bzImage pkg/kernel
 
-pkg/initrd: build/initrd/init build/initrd/bin/busybox build/initrd/bin/mkfs.ext4
+pkg/initrd: build/initrd/init build/initrd/usr/sbin/cryptsetup
 	( cd build/initrd && find . | cpio -o -H newc ) > pkg/initrd
 
 test/config.tar: launch/launch.json
 	mkdir -p test
 	tar  cf test/config.tar -C launch .
 
-build/busybox:
-	mkdir -p build/
-	cd build/&&\
-	git clone git://git.busybox.net/busybox
+#build/busybox:
+#	mkdir -p build/
+#	cd build/&&\
+#	git clone git://git.busybox.net/busybox
+#
+#build/initrd/bin/busybox: build/busybox busybox-config-x86_64
+#	cd build/busybox &&\
+#	cp ../../busybox-config-x86_64 .config &&\
+#	make oldconfig &&\
+#	sed -i .config -e 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' &&\
+#	make -j &&\
+#	make CONFIG_PREFIX=../initrd install
 
-build/initrd/bin/busybox: build/busybox
-	cd build/busybox &&\
-	make defconfig &&\
-	sed -i .config -e 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' &&\
-	make -j &&\
-	make CONFIG_PREFIX=../initrd install
-
-build/initrd/init: .PHONY
+build/initrd/init: .PHONY build/initrd/usr/sbin/cryptsetup
 	mkdir -p build/initrd
-	cd guest && CGO_ENABLED=0 go build -tags nethttpomithttp2  -ldflags="-s -w" -o ../build/initrd/init -asmflags -trimpath
+	cd guest &&\
+	export BUILDROOT=$(PWD)/build/buildroot-2022.08.1/ &&\
+	export CGO_CFLAGS="-Os -I$${BUILDROOT}/output/staging/include" &&\
+	export CGO_LDFLAGS="-Os -L$${BUILDROOT}/output/staging/lib -L -L$${SYSROOT}/output/staging/usr/lib" &&\
+	export CGO_ENABLED=1 &&\
+	export CC=$${BUILDROOT}/output/host/bin/x86_64-buildroot-linux-musl-gcc &&\
+	go build -tags nethttpomithttp2 -ldflags="-s -w -linkmode external" -o ../build/initrd/init -asmflags -trimpath
 	mkdir -p build/initrd/bin
 	ln -sf ../init build/initrd/bin/runc
 	ln -sf ../init build/initrd/bin/nsenter
@@ -82,11 +89,35 @@ build/e2fsprogs-1.46.5:
 	wget https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.46.5/e2fsprogs-1.46.5.tar.gz &&\
 	tar -xzf e2fsprogs-1.46.5.tar.gz
 
-build/initrd/bin/mkfs.ext4: build/e2fsprogs-1.46.5
-	cd build/e2fsprogs-1.46.5 &&\
-	LIBS=-static ./configure --enable-static --disable-shared &&\
-	make -j &&\
-	cp misc/mke2fs ../initrd/bin/mkfs.ext4
+#build/initrd/bin/mkfs.ext4: build/e2fsprogs-1.46.5
+#	cd build/e2fsprogs-1.46.5 &&\
+#	LIBS=-static ./configure --enable-static --disable-shared &&\
+#	make -j &&\
+#	cp misc/mke2fs ../initrd/bin/mkfs.ext4
+
+build/buildroot-2022.08.1:
+	mkdir -p build
+	cd build &&\
+	wget https://buildroot.org/downloads/buildroot-2022.08.1.tar.gz &&\
+	tar -xzf buildroot-2022.08.1.tar.gz
+
+
+build/initrd/usr/sbin/cryptsetup: build/buildroot-2022.08.1 buildroot-config-x86_64
+	unset PERL_MM_OPT &&\
+	cd build/buildroot-2022.08.1 &&\
+	cp ../../buildroot-config-x86_64 .config &&\
+	make oldconfig &&\
+	make -j8 &&\
+	mkdir -p ../initrd/usr/sbin/ &&\
+	mkdir -p ../initrd/usr/lib/ &&\
+	rsync -a output/target/lib/ ../initrd/lib/ &&\
+	rsync -a output/target/usr/lib/ ../initrd/usr/lib/ &&\
+	rsync -a output/target/bin/ ../initrd/bin/ &&\
+	rsync -a output/target/sbin/ ../initrd/sbin/ &&\
+	rsync -a output/target/usr/sbin/ ../initrd/usr/sbin/ &&\
+	rsync -a output/target/usr/bin/ ../initrd/usr/bin/ &&\
+	ln -sf /bin/ash ../initrd/bin/sh
+
 
 
 

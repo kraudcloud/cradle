@@ -26,9 +26,9 @@ const (
 func unpackLayers() {
 	os.MkdirAll("/cache/layers/", 0755)
 
-	iter, err := ioutil.ReadDir("/dev/disk/by-layer-uuid/")
+	iter, err := ioutil.ReadDir("/dev/disk/layer/")
 	if err != nil {
-		log.Errorf("ReadDir /dev/disk/by-layer-uuid/ : %v", err)
+		log.Errorf("ReadDir /dev/disk/layer/ : %v", err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func unpackLayers() {
 
 		if name[len(name)-1] == "extfs" {
 			os.MkdirAll("/cache/layers/"+uuid, 0755)
-			syscall.Mount("/dev/disk/by-layer-uuid/"+f.Name(), "/cache/layers/"+uuid, "ext4", syscall.MS_RDONLY, "")
+			syscall.Mount("/dev/disk/layer/"+f.Name(), "/cache/layers/"+uuid, "ext4", syscall.MS_RDONLY, "")
 		}
 
 		gz := false
@@ -58,7 +58,7 @@ func unpackLayers() {
 
 		os.MkdirAll("/cache/layers/"+uuid, 0755)
 
-		fo, err := os.Open("/dev/disk/by-layer-uuid/" + f.Name())
+		fo, err := os.Open("/dev/disk/layer/" + f.Name())
 		if err != nil {
 			exit(err)
 			return

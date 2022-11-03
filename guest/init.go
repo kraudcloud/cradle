@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -23,12 +24,24 @@ func main_init() {
 
 	wdinit()
 	makedev()
-	vmminit()
+	go vmminit()
 	mountnvme()
 	config()
 	network()
 	sev()
-	unpackLayers()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		unpackLayers()
+		wg.Done()
+	}()
+	go func() {
+		volumes()
+		wg.Done()
+	}()
+	wg.Wait()
+
 	go vdocker()
 	go shell()
 	pod()
@@ -87,8 +100,8 @@ func makedev() {
 
 			a, b, ok := strings.Cut(string(serial), ".")
 			if ok {
-				os.MkdirAll("/dev/disk/"+"by-"+a+"-uuid/", 0777)
-				os.Symlink("/dev/"+name, "/dev/disk/by-"+a+"-uuid/"+b)
+				os.MkdirAll("/dev/disk/"+a, 0777)
+				os.Symlink("/dev/"+name, "/dev/disk/"+a+"/"+b)
 			} else {
 				os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 			}
@@ -131,7 +144,7 @@ func mountnvme() {
 }
 
 func mkfs(path string) error {
-	cmd := exec.Command("/bin/mkfs.ext4", "-q", "-F", path)
+	cmd := exec.Command("/sbin/mkfs.ext4", "-q", "-F", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

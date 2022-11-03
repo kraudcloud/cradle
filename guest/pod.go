@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
 	"io"
@@ -23,6 +24,8 @@ type Container struct {
 	Process *os.Process
 
 	ExecRequests map[uint64]*Exec
+
+	cancel context.CancelFunc
 }
 
 var CONTAINERS = make(map[string]*Container)
@@ -40,18 +43,33 @@ func pod() {
 	defer CONTAINERS_LOCK.Unlock()
 
 	for _, c := range CONFIG.Pod.Containers {
+
+		ctx, cancel := context.WithCancel(context.Background())
+
 		container := &Container{
 			Stdout:       NewLog(1024 * 1024),
 			Spec:         c,
 			ExecRequests: make(map[uint64]*Exec),
+			cancel:       cancel,
 		}
 
-		go container.manager()
+		go container.manager(ctx)
 		CONTAINERS[c.ID] = container
 	}
 }
 
-func (c *Container) manager() {
+func (c *Container) stop() {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	if c.Process != nil {
+		c.Process.Signal(syscall.SIGTERM)
+		time.Sleep(time.Millisecond * 100)
+		c.Process.Kill()
+	}
+	c.cancel()
+}
+
+func (c *Container) manager(ctx context.Context) {
 
 	var err error
 
@@ -66,6 +84,12 @@ func (c *Container) manager() {
 	}
 	for attempt := 1; ; attempt++ {
 		err = c.run()
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 
 		var restart = true
 		if err == nil {
@@ -90,7 +114,11 @@ func (c *Container) manager() {
 			delay = 100
 		}
 
-		time.Sleep(time.Millisecond * time.Duration(delay))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Millisecond * time.Duration(delay)):
+		}
 	}
 
 	if c.Spec.Lifecycle.Critical {

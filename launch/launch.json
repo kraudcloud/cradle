@@ -37,8 +37,18 @@
           "restart_delay": 0,
           "max_restarts": 100,
           "critical": true
-        }
+        },
+        "block_volume_mounts": [{
+            "block_volume_id": "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
+            "guest_path": "/data"
+        }]
+
       }
+    ],
+    "block_volumes": [
+        {
+            "ID": "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c"
+        }
     ]
   },
   "network" : {

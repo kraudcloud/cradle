@@ -150,6 +150,26 @@ func main_runc() {
 		}
 	}()
 
+	for _, m := range container.BlockVolumeMounts {
+
+		vp := filepath.Join("/var/lib/docker/volumes/", m.BlockVolumeID, "_data", m.VolumePath)
+		gp := filepath.Join("/cache/containers/", container.ID, "root", m.GuestPath)
+
+		os.MkdirAll(vp, 0755)
+		os.MkdirAll(gp, 0755)
+
+		var flags uintptr = syscall.MS_BIND
+		if m.ReadOnly {
+			flags |= syscall.MS_RDONLY
+		}
+
+		err := syscall.Mount(vp, gp, "none", flags, "")
+		if err != nil {
+			log.Errorf("mount: %v", err)
+			continue
+		}
+	}
+
 	// set hostname
 	if container.Hostname == "" {
 		container.Hostname = container.Name

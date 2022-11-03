@@ -13,6 +13,7 @@ func shell() {
 
 	if _, err := os.Stat("/bin/sh"); errors.Is(err, os.ErrNotExist) {
 		log.Warn("no debug shell in initrd: /bin/sh not found")
+		return
 	}
 
 	for {
@@ -24,6 +25,6 @@ func shell() {
 		if err != nil {
 			log.Warnf("debug shell exited: %v", err)
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(time.Millisecond * 100)
 	}
 }

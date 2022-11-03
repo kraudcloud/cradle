@@ -4,6 +4,9 @@ THIS=`dirname $0`
 cd $THIS/test
 
 
+layer1=layer.4451b8f2-1d33-48ba-8403-aba9559bb6af.tar.gz
+volume1=volume.e4ee5e4a-ce31-47d6-a72e-f9e316439b5c.img
+
 if [ ! -e cache.ext4.img ]; then
     dd if=/dev/zero of=cache.ext4.img bs=1M count=1000
 fi
@@ -12,7 +15,10 @@ if [ ! -e swap.img ]; then
     dd if=/dev/zero of=swap.img bs=1M count=1000
 fi
 
-layer1=layer.4451b8f2-1d33-48ba-8403-aba9559bb6af.tar.gz
+if [ ! -e $volume1 ]; then
+    dd if=/dev/zero of=$volume1 bs=1M count=1000
+fi
+
 
 qemu-system-x86_64 \
     "-nographic" "-nodefaults" "-no-user-config"  "-nographic"  "-enable-kvm"  "-no-reboot" "-no-acpi" \
@@ -38,3 +44,5 @@ qemu-system-x86_64 \
     "-device"   "virtio-blk-device,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config" \
     "-drive"    "format=raw,aio=threads,file=$layer1,readonly=on,if=none,id=drive-virtio-layer1"  \
     "-device"   "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=layer.1,device_id=$layer1" \
+    "-drive"    "format=raw,aio=threads,file=$volume1,readonly=off,if=none,id=drive-virtio-volume1"  \
+    "-device"   "scsi-hd,drive=drive-virtio-volume1,id=virtio-volume1,serial=volume.1,device_id=$volume1" \

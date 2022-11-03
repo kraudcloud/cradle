@@ -488,8 +488,8 @@ func vdocker() {
 
 		if len(parts) == 4 && parts[1] == "containers" && parts[3] == "kill" {
 			w.WriteHeader(200)
-			defer func() {
-				time.Sleep(time.Millisecond)
+			go func() {
+				time.Sleep(time.Millisecond * 10)
 				exit(fmt.Errorf("killed by docker api"))
 			}()
 			return
