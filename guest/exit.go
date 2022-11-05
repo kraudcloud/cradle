@@ -5,7 +5,6 @@ package main
 import (
 	"bufio"
 	"github.com/kraudcloud/cradle/spec"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -55,8 +54,7 @@ func exit(err error) {
 		}
 	}
 
-	f, _ = os.Open("/proc/mounts")
-	io.Copy(os.Stdout, f)
+	log.Errorf("poweroff")
 
 	if f, err := os.OpenFile("/proc/sys/kernel/sysrq", os.O_WRONLY, 0); err == nil {
 		f.Write([]byte("1"))

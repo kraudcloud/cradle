@@ -14,21 +14,21 @@ import (
 )
 
 type Container struct {
+	Index uint8
 	Spec spec.Container
 
-	Stdout *Log
+	Stdout io.Writer
+	Stderr io.Writer
 	Stdin  io.WriteCloser
 
 	Lock    sync.Mutex
 	Pty     *os.File
 	Process *os.Process
 
-	ExecRequests map[uint64]*Exec
-
 	cancel context.CancelFunc
 }
 
-var CONTAINERS = make(map[string]*Container)
+var CONTAINERS = []*Container{}
 var CONTAINERS_LOCK sync.Mutex
 
 func pod() {
@@ -42,19 +42,25 @@ func pod() {
 	CONTAINERS_LOCK.Lock()
 	defer CONTAINERS_LOCK.Unlock()
 
-	for _, c := range CONFIG.Pod.Containers {
+	for i, c := range CONFIG.Pod.Containers {
+
+		if i >= 255 {
+			log.Error("too many containers")
+			break
+		}
 
 		ctx, cancel := context.WithCancel(context.Background())
 
 		container := &Container{
-			Stdout:       NewLog(1024 * 1024),
-			Spec:         c,
-			ExecRequests: make(map[uint64]*Exec),
-			cancel:       cancel,
+			Index:		uint8(i),
+			Stdout:     &VmmWriter{Key: spec.YckeyContainerStdout(uint8(i))},
+			Stderr:     &VmmWriter{Key: spec.YckeyContainerStderr(uint8(i))},
+			Spec:       c,
+			cancel:     cancel,
 		}
 
 		go container.manager(ctx)
-		CONTAINERS[c.ID] = container
+		CONTAINERS = append(CONTAINERS, container)
 	}
 }
 

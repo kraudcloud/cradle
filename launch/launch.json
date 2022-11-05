@@ -20,11 +20,9 @@
           ]
         },
         "process": {
-          "tty": false,
+          "tty": true,
           "cmd": [
-            "sh",
-            "-c",
-            "echo yalla; env"
+            "sh"
           ],
           "env": {
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

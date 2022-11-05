@@ -3,28 +3,33 @@
 package main
 
 import (
-	"context"
-	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
+	"github.com/aep/yeet"
 	"github.com/mdlayher/vsock"
 	"io"
 	"net"
 	"os"
 	"time"
+	"fmt"
+	"sync"
 )
 
-var VMM = make(chan yeet.Message, 2)
+
+
+var YC *yeet.Sock
+var YCWLOCK sync.Mutex
+
 
 func vmm(key uint32, msg []byte) {
-	select {
-	case VMM <- yeet.Message{Key: key, Value: msg}:
-	default:
-		log.Error("vmm: dropped message")
-	}
+	YCWLOCK.Lock()
+	defer YCWLOCK.Unlock()
+	YC.Write(yeet.Message{Key: key, Value: msg})
 }
 
-func vmmOut1() {
-	sock, err := vsock.Dial(vsock.Host, 9, nil)
+func vmm1(port uint32, connected chan bool) {
+
+
+	sock, err := vsock.Dial(vsock.Host, port, nil)
 	if err != nil {
 		log.Errorf("vmm: %v", err)
 		return
@@ -40,39 +45,64 @@ func vmmOut1() {
 
 	log.Printf("vmm: %s", yc.RemoteHello())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case m := <-VMM:
-				yc.Write(m)
-			}
-		}
-	}()
+	YCWLOCK.Lock()
+	YC = yc
+	YCWLOCK.Unlock()
 
-	vmm(spec.YC_KEY_STARTUP, []byte{})
+	select {
+	case connected <- true:
+	default:
+	}
+
+	YC.Write(yeet.Message{Key: spec.YC_KEY_STARTUP, Value: []byte("hello")})
 
 	for {
 		m, err := yc.Read()
 		if err != nil {
-			log.Errorf("vmm: %v", err)
+			exit(fmt.Errorf("vmm: %v", err))
 			return
 		}
-		log.Infof("vmm: %v", m)
+		if m.Key == spec.YC_KEY_SHUTDOWN {
+			exit(fmt.Errorf("vmm: %s", m.Value))
+			return
+		} else if m.Key > spec.YC_KEY_CONTAINER_START && m.Key < spec.YC_KEY_CONTAINER_END {
+			container	:= uint8((m.Key - spec.YC_KEY_CONTAINER_START) / 10)
+			subkey		:= (m.Key - spec.YC_KEY_CONTAINER_START) % 10
+			if subkey == spec.YC_OFF_STDIN || subkey == spec.YC_OFF_STDOUT || subkey == spec.YC_OFF_STDERR {
+				if CONTAINERS[container] != nil && CONTAINERS[container].Stdin != nil {
+					CONTAINERS[container].Stdin.Write(m.Value)
+				}
+			}
+		} else {
+		}
 	}
 }
 
 func vmminit() {
-	return
+
+
+	cid, err := vsock.ContextID()
+	if err != nil {
+		exit(fmt.Errorf("vmm: %v", err))
+		return
+	}
+
+	connected := make(chan bool, 1)
+
 	go func() {
-		for {
-			vmmOut1()
-			time.Sleep(time.Second)
+		for ;; {
+			log.Infof("vmm: connecting to vmmv %d", cid)
+			vmm1(cid, connected)
+			time.Sleep(1*time.Second)
 		}
 	}()
+
+	select {
+	case <-connected:
+	case <-time.After(time.Second):
+		exit(fmt.Errorf("vmm: timeout"))
+	}
+
 
 	os.MkdirAll("/vfs/var/run/", 0755)
 	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")
@@ -94,7 +124,7 @@ func vmminit() {
 			}
 			go func() {
 				defer conn.Close()
-				conn2, err := vsock.Dial(vsock.Host, 1445, nil)
+				conn2, err := vsock.Dial(vsock.Host, cid, nil)
 				if err != nil {
 					log.Warn("axy: Failed to dial api", err)
 					return
@@ -108,4 +138,21 @@ func vmminit() {
 			}()
 		}
 	}()
+}
+
+
+type VmmWriter struct {
+	Key uint32
+}
+
+func (w VmmWriter) Write(p []byte) (n int, err error) {
+	t:=len(p)
+	for ; len(p) > 0; p = p[n:] {
+		n = len(p)
+		if n > 65535 {
+			n = 65535
+		}
+		vmm(w.Key, p[:n])
+	}
+	return t, nil
 }

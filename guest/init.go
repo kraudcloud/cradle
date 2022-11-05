@@ -24,7 +24,7 @@ func main_init() {
 
 	wdinit()
 	makedev()
-	go vmminit()
+	vmminit()
 	mountnvme()
 	config()
 	network()
@@ -42,8 +42,6 @@ func main_init() {
 	}()
 	wg.Wait()
 
-	go vdocker()
-	go shell()
 	pod()
 
 	for {

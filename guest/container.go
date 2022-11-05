@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
@@ -13,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 func main_runc() {
@@ -312,7 +310,6 @@ func (c *Container) prepare() error {
 }
 
 func (c *Container) run() error {
-
 	cmd := exec.Command("/bin/runc", c.Spec.ID)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS |
@@ -347,6 +344,7 @@ func (c *Container) run() error {
 		c.Lock.Lock()
 		c.Pty = ptmx
 		c.Process = cmd.Process
+		c.Stdin = ptmx
 		c.Lock.Unlock()
 
 		go func() {
@@ -379,7 +377,7 @@ func (c *Container) run() error {
 		c.Lock.Unlock()
 
 		go func() {
-			n, err := io.Copy(c.Stdout, stderr)
+			n, err := io.Copy(c.Stderr, stderr)
 			if false {
 				log.Debugf("container %s stdout ended after reading %d bytes: %s", c.Spec.ID, n, err)
 			}
@@ -398,25 +396,7 @@ func (c *Container) run() error {
 		return err
 	}
 
-	//fmt.Println("log before exit:")
-	time.Sleep(10 * time.Millisecond)
 	c.Pty.Close()
-	os.Stdout.Sync()
-	fmt.Print("\n--------\n")
-	c.Stdout.Dump(os.Stdout)
-	fmt.Print("--------\n")
-	os.Stdout.Sync()
-	time.Sleep(10 * time.Millisecond)
-
-	var lastlog bytes.Buffer
-	lastlog.Write([]byte(c.Spec.ID + "\n"))
-	fmt.Fprintf(&lastlog, "%d\n", state.ExitCode())
-	lastlog.Write([]byte("\n\n"))
-	c.Stdout.Dump(&lastlog)
-	if lastlog.Len() > 65000 {
-		lastlog.Truncate(65000)
-	}
-	vmm(spec.YC_KEY_CONTAINER_EXITLOG, lastlog.Bytes())
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

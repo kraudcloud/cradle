@@ -1,6 +1,11 @@
 FIRMWARE=qboot
 
-all: pkg.tar
+all: vmm/vmm pkg.tar
+
+
+vmm/vmm: .PHONY
+	cd vmm &&\
+	go build
 
 pkg.tar: pkg/pflash0 pkg/kernel pkg/initrd test/config.tar
 	cd pkg &&\
@@ -39,11 +44,12 @@ pkg/pflash0: build/.$(FIRMWARE)
 build/linux:
 	mkdir -p build
 	cd build &&\
-	git clone https://github.com/torvalds/linux.git
+	git clone https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git --single-branch --branch linux-6.0.y &&\
+	cd linux &&\
+	git checkout v6.0.7
 
 pkg/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
-	git checkout v6.1-rc2 &&\
 	cp ../../kernel-config-x86_64 .config &&\
 	make oldconfig &&\
 	make -j8

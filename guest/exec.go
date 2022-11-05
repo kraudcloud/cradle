@@ -30,7 +30,8 @@ type Exec struct {
 	DetachKeys   string
 	Privileged   bool
 
-	containerID string
+	containerID	string
+	containerIndex uint8
 	eid         uint64
 
 	ptmx     *os.File
@@ -81,7 +82,7 @@ func (e *Exec) Kill() {
 func (e *Exec) Start() (err error) {
 
 	CONTAINERS_LOCK.Lock()
-	container := CONTAINERS[e.containerID]
+	container := CONTAINERS[e.containerIndex]
 	CONTAINERS_LOCK.Unlock()
 
 	if container == nil {
