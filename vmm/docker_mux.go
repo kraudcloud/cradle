@@ -10,14 +10,26 @@ import (
 
 type DockerMux struct {
 	inner       io.Writer
+	reader      io.Reader
 	expect_more uint32
+}
+
+func (m *DockerMux) Close() error {
+	if closer, ok := m.inner.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
 }
 
 func (m *DockerMux) Read(b []byte) (int, error) {
 
-	reader, ok := m.inner.(io.Reader)
-	if !ok {
-		return 0, io.EOF
+	reader := m.reader
+	if reader == nil {
+		var ok bool
+		reader, ok = m.inner.(io.Reader)
+		if !ok {
+			return 0, io.EOF
+		}
 	}
 
 	if m.expect_more == 0 {

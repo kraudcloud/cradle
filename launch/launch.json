@@ -20,14 +20,14 @@
           ]
         },
         "process": {
-          "tty": true,
+          "tty": false,
           "cmd": [
             "sh"
           ],
           "env": {
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           },
-          "workdir": "/home"
+          "workdir": "/etc"
         },
         "lifecycle": {
           "restart_on_success": false,

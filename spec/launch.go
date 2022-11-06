@@ -120,7 +120,7 @@ type Lifecycle struct {
 	RestartOnFailure bool `json:"restart_on_failure"`
 
 	// delay restarts by this amount of milliseconds
-	RestartDelay	uint64 `json:"restart_delay"`
+	RestartDelay uint64 `json:"restart_delay"`
 
 	// give up after starting this many times.
 	// note that the first start counts too
@@ -135,7 +135,7 @@ type Lifecycle struct {
 type BlockVolumeMount struct {
 
 	// name of block volume
-	BlockVolumeName  string `json:"block_volume_name"`
+	BlockVolumeName string `json:"block_volume_name"`
 
 	// path inside the volume
 	VolumePath string `json:"volume_path"`
@@ -176,9 +176,9 @@ type ConfigMount struct {
 }
 
 type Network struct {
-	Ip4			string `json:"ip4,omitempty"`
-	Ip6			string `json:"ip6,omitempty"`
-	Gateway4	string `json:"gw4,omitempty"`
-	Gateway6	string `json:"gw6,omitempty"`
-	Nameservers	[]string `json:"nameservers,omitempty"`
+	Ip4         string   `json:"ip4,omitempty"`
+	Ip6         string   `json:"ip6,omitempty"`
+	Gateway4    string   `json:"gw4,omitempty"`
+	Gateway6    string   `json:"gw6,omitempty"`
+	Nameservers []string `json:"nameservers,omitempty"`
 }

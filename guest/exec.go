@@ -3,11 +3,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/creack/pty"
+	"github.com/kraudcloud/cradle/spec"
 	"golang.org/x/sys/unix"
 	"io"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,96 +17,68 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type Exec struct {
-	Cmd          []string
-	WorkingDir   string
-	Env          []string
-	Tty          bool
-	AttachStdin  bool
-	AttachStdout bool
-	AttachStderr bool
-	DetachKeys   string
-	Privileged   bool
+	Cmd        []string
+	WorkingDir string
+	Env        []string
+	Tty        bool
+	Host	    bool
 
-	containerID	string
 	containerIndex uint8
-	eid         uint64
+	execIndex      uint8
 
-	ptmx     *os.File
-	stderr   io.ReadCloser
-	stdout   io.ReadCloser
-	stdin    io.WriteCloser
-	proc     *os.Process
-	exitCode int
+	ptmx  *os.File
+	stdin io.WriteCloser
+	proc  *os.Process
 }
 
-var EXECS = make(map[uint64]*Exec)
+var EXECS = make(map[uint8]*Exec)
 var EXECS_LOCK sync.Mutex
 
-func createExec(e *Exec) uint64 {
-	EXECS_LOCK.Lock()
-	defer EXECS_LOCK.Unlock()
+func StartExecLocked(e *Exec) (err error) {
 
-	id := rand.Uint64()
-	for {
-		if _, ok := EXECS[id]; !ok {
-			break
+
+	var cmd *exec.Cmd
+
+	if e.Host {
+		cmd = exec.Command(e.Cmd[0], e.Cmd[1:]...)
+	} else {
+
+
+		CONTAINERS_LOCK.Lock()
+		container := CONTAINERS[e.containerIndex]
+		CONTAINERS_LOCK.Unlock()
+
+		if container == nil {
+			return fmt.Errorf("no such container")
 		}
-		id = rand.Uint64()
+
+		if e.WorkingDir == "" {
+			e.WorkingDir = container.Spec.Process.Workdir
+		}
+
+
+		cmd = exec.Command("/bin/nsenter", append([]string{
+			fmt.Sprintf("%d", container.Process.Pid),
+			container.Spec.ID,
+			e.WorkingDir,
+			e.Cmd[0],
+		}, e.Cmd[1:]...)...)
+
+		for k, v := range container.Spec.Process.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		}
+
 	}
 
-	e.eid = id
-	EXECS[id] = e
-
-	return id
-}
-
-func (e *Exec) Kill() {
-	if e.stdout != nil {
-		e.stdout.Close()
-	}
-	if e.stdin != nil {
-		e.stdin.Close()
-	}
-	if e.stderr != nil {
-		e.stderr.Close()
-	}
-	time.Sleep(time.Second)
-	if e.proc != nil {
-		e.proc.Kill()
-	}
-}
-
-func (e *Exec) Start() (err error) {
-
-	CONTAINERS_LOCK.Lock()
-	container := CONTAINERS[e.containerIndex]
-	CONTAINERS_LOCK.Unlock()
-
-	if container == nil {
-		return fmt.Errorf("no such container")
-	}
-
-	if e.WorkingDir == "" {
-		e.WorkingDir = container.Spec.Process.Workdir
-	}
-
-	cmd := exec.Command("/bin/nsenter", append([]string{
-		fmt.Sprintf("%d", container.Process.Pid),
-		e.containerID,
-		e.WorkingDir,
-		e.Cmd[0],
-	}, e.Cmd[1:]...)...)
-
-	for k, v := range container.Spec.Process.Env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
-	}
 	for _, v := range e.Env {
 		cmd.Env = append(cmd.Env, v)
 	}
+
+
+
 
 	if e.Tty {
 		ptmx, err := pty.Start(cmd)
@@ -114,17 +87,20 @@ func (e *Exec) Start() (err error) {
 		}
 
 		e.ptmx = ptmx
-		e.stdout = ptmx
-		e.stdin = ptmx
 		e.proc = cmd.Process
+		e.stdin = ptmx
 
+		var stdout = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT)}
+		go func() {
+			io.Copy(stdout, e.ptmx)
+		}()
 	} else {
 
-		e.stdout, err = cmd.StdoutPipe()
+		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			return err
 		}
-		e.stderr, err = cmd.StderrPipe()
+		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			return err
 		}
@@ -138,26 +114,51 @@ func (e *Exec) Start() (err error) {
 			return err
 		}
 
+		var xstdout = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT)}
+		go func() {
+			io.Copy(xstdout, stdout)
+		}()
+
+		var xstderr = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR)}
+		go func() {
+			io.Copy(xstderr, stderr)
+		}()
+
 		e.proc = cmd.Process
 	}
 
 	go func() {
+
+		var exitcode = -1
+
 		ps, err := e.proc.Wait()
 		if err == nil && ps != nil {
-			e.exitCode = ps.ExitCode()
+			exitcode = ps.ExitCode()
 		}
+
+		js, _ := json.Marshal(&spec.ControlMessageExit{
+			Code: int32(exitcode),
+		})
+		EXECS_LOCK.Lock()
+		delete(EXECS, e.execIndex)
+		EXECS_LOCK.Unlock()
+		vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_EXIT), js)
 	}()
+
+	EXECS[e.execIndex] = e
 
 	return nil
 }
 
-func (c *Exec) Resize(w int, h int) error {
+func (c *Exec) Resize(rows uint16, cols uint16, xpixel uint16, ypixel uint16) error {
 	if c.ptmx == nil {
 		return nil
 	}
 	return pty.Setsize(c.ptmx, &pty.Winsize{
-		Rows: uint16(h),
-		Cols: uint16(w),
+		Rows: rows,
+		Cols: cols,
+		X:    xpixel,
+		Y:    ypixel,
 	})
 }
 
@@ -204,6 +205,7 @@ func main_nsenter() {
 
 	err = unix.Exec(exe, cmd, os.Environ())
 	if err != nil {
-		panic(fmt.Sprintf("Exec: %s %v", exe, err))
+		fmt.Fprintf(os.Stderr, "Exec: %s %v\n", exe, err)
+		os.Exit(1)
 	}
 }

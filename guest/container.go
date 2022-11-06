@@ -230,13 +230,15 @@ func main_runc() {
 	}
 }
 
-func (c *Container) Resize(w int, h int) error {
+func (c *Container) Resize(w uint16, h uint16, xpixsels uint16, ypixels uint16) error {
 	if c.Pty == nil {
 		return nil
 	}
 	return pty.Setsize(c.Pty, &pty.Winsize{
-		Rows: uint16(h),
-		Cols: uint16(w),
+		Rows: h,
+		Cols: w,
+		X:    xpixsels,
+		Y:    ypixels,
 	})
 }
 

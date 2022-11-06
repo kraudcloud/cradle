@@ -15,7 +15,7 @@ import (
 
 type Container struct {
 	Index uint8
-	Spec spec.Container
+	Spec  spec.Container
 
 	Stdout io.Writer
 	Stderr io.Writer
@@ -52,11 +52,11 @@ func pod() {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		container := &Container{
-			Index:		uint8(i),
-			Stdout:     &VmmWriter{Key: spec.YckeyContainerStdout(uint8(i))},
-			Stderr:     &VmmWriter{Key: spec.YckeyContainerStderr(uint8(i))},
-			Spec:       c,
-			cancel:     cancel,
+			Index:  uint8(i),
+			Stdout: &VmmWriter{Key: spec.YKContainer(uint8(i), spec.YC_SUB_STDOUT)},
+			Stderr: &VmmWriter{Key: spec.YKContainer(uint8(i), spec.YC_SUB_STDERR)},
+			Spec:   c,
+			cancel: cancel,
 		}
 
 		go container.manager(ctx)
