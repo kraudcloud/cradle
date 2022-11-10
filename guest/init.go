@@ -28,7 +28,7 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
-	sev()
+	//sev()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
