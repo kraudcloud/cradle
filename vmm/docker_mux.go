@@ -1,6 +1,6 @@
 // Copyright (c) 2020-present devguard GmbH
 
-package main
+package vmm
 
 import (
 	"encoding/binary"
@@ -60,6 +60,29 @@ func (m *DockerMux) Read(b []byte) (int, error) {
 func (m *DockerMux) Write(b []byte) (int, error) {
 
 	var header [8]byte = [8]byte{1, 0, 0, 0, 0, 0, 0, 0}
+	binary.BigEndian.PutUint32(header[4:], uint32(len(b)))
+
+	_, err := m.inner.Write(header[:])
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = m.inner.Write(b)
+	if err != nil {
+		return 0, err
+	}
+
+	flusher, ok := m.inner.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+
+	return len(b), err
+}
+
+func (m *DockerMux) WriteStream(stream uint8, b []byte) (int, error) {
+
+	var header [8]byte = [8]byte{stream, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint32(header[4:], uint32(len(b)))
 
 	_, err := m.inner.Write(header[:])

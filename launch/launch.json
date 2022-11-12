@@ -30,10 +30,10 @@
           "workdir": "/etc"
         },
         "lifecycle": {
-          "restart_on_success": false,
-          "restart_on_failure": false,
+          "restart_on_success": true,
+          "restart_on_failure": true,
           "restart_delay": 0,
-          "max_restarts": 100,
+          "max_restarts": 2,
           "critical": true
         },
         "block_volume_mounts": [{

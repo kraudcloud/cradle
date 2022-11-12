@@ -18,6 +18,10 @@ const YC_SUB_EXEC = 0x5
 const YC_SUB_EXIT = 0x6
 const YC_SUB_SIGNAL = 0x6
 
+const YC_SUB_CLOSE_STDIN  = 0x11
+const YC_SUB_CLOSE_STDOUT = 0x12
+const YC_SUB_CLOSE_STDERR = 0x13
+
 func YKContainer(container uint8, subkey uint8) uint32 {
 	return YC_KEY_CONTAINER_START + (uint32(container) << 8) + uint32(subkey)
 }

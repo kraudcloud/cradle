@@ -72,6 +72,10 @@ func vmm1(port uint32, connected chan bool) {
 				if CONTAINERS[container] != nil || CONTAINERS[container].Stdin != nil {
 					CONTAINERS[container].Stdin.Write(m.Value)
 				}
+			} else if subkey == spec.YC_SUB_CLOSE_STDIN {
+				if CONTAINERS[container] != nil || CONTAINERS[container].Stdin != nil {
+					CONTAINERS[container].Stdin.Close()
+				}
 			} else if subkey == spec.YC_SUB_SIGNAL {
 
 				if int(container) >= len(CONTAINERS) || CONTAINERS[container] == nil {
@@ -110,6 +114,10 @@ func vmm1(port uint32, connected chan bool) {
 			if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
 				if EXECS[execnr] != nil && EXECS[execnr].stdin != nil {
 					EXECS[execnr].stdin.Write(m.Value)
+				}
+			} else if subkey == spec.YC_SUB_CLOSE_STDIN {
+				if EXECS[execnr] != nil && EXECS[execnr].stdin != nil {
+					EXECS[execnr].stdin.Close()
 				}
 			} else if subkey == spec.YC_SUB_SIGNAL {
 
@@ -238,7 +246,8 @@ func vmminit() {
 }
 
 type VmmWriter struct {
-	Key uint32
+	WriteKey uint32
+	CloseKey uint32
 }
 
 func (w VmmWriter) Write(p []byte) (n int, err error) {
@@ -248,7 +257,12 @@ func (w VmmWriter) Write(p []byte) (n int, err error) {
 		if n > 65535 {
 			n = 65535
 		}
-		vmm(w.Key, p[:n])
+		vmm(w.WriteKey, p[:n])
 	}
 	return t, nil
+}
+
+func (w VmmWriter) Close() error {
+	vmm(w.CloseKey, []byte{})
+	return nil
 }

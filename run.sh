@@ -20,4 +20,4 @@ if [ ! -e $volume1 ]; then
 fi
 
 
-../vmm/vmm
+../vmm/simulator/simulator

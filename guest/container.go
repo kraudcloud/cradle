@@ -350,6 +350,7 @@ func (c *Container) run() error {
 		c.Lock.Unlock()
 
 		go func() {
+			defer c.Stdout.Close()
 			n, err := io.Copy(c.Stdout, c.Pty)
 			if false {
 				log.Debugf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
@@ -379,6 +380,7 @@ func (c *Container) run() error {
 		c.Lock.Unlock()
 
 		go func() {
+			defer c.Stderr.Close()
 			n, err := io.Copy(c.Stderr, stderr)
 			if false {
 				log.Debugf("container %s stdout ended after reading %d bytes: %s", c.Spec.ID, n, err)
@@ -386,6 +388,7 @@ func (c *Container) run() error {
 		}()
 
 		go func() {
+			defer c.Stdout.Close()
 			n, err := io.Copy(c.Stdout, stdout)
 			if false {
 				log.Debugf("container %s stderr ended after reading %d bytes: %s", c.Spec.ID, n, err)

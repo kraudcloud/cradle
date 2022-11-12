@@ -4,7 +4,7 @@ all: vmm/vmm pkg.tar
 
 
 vmm/vmm: .PHONY
-	cd vmm &&\
+	cd vmm/simulator &&\
 	go build
 
 pkg.tar: pkg/pflash0 pkg/kernel pkg/initrd test/config.tar

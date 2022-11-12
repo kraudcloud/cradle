@@ -90,7 +90,10 @@ func StartExecLocked(e *Exec) (err error) {
 		e.proc = cmd.Process
 		e.stdin = ptmx
 
-		var stdout = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT)}
+		var stdout = &VmmWriter{
+			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
+			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
+		}
 		go func() {
 			io.Copy(stdout, e.ptmx)
 		}()
@@ -114,12 +117,18 @@ func StartExecLocked(e *Exec) (err error) {
 			return err
 		}
 
-		var xstdout = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT)}
+		var xstdout = &VmmWriter{
+			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
+			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
+		}
 		go func() {
 			io.Copy(xstdout, stdout)
 		}()
 
-		var xstderr = &VmmWriter{Key: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR)}
+		var xstderr = &VmmWriter{
+			WriteKey:	spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR),
+			CloseKey:	spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDERR),
+		}
 		go func() {
 			io.Copy(xstderr, stderr)
 		}()
