@@ -24,7 +24,7 @@ type Exec struct {
 	WorkingDir string
 	Env        []string
 	Tty        bool
-	Host	    bool
+	Host       bool
 
 	containerIndex uint8
 	execIndex      uint8
@@ -39,13 +39,11 @@ var EXECS_LOCK sync.Mutex
 
 func StartExecLocked(e *Exec) (err error) {
 
-
 	var cmd *exec.Cmd
 
 	if e.Host {
 		cmd = exec.Command(e.Cmd[0], e.Cmd[1:]...)
 	} else {
-
 
 		CONTAINERS_LOCK.Lock()
 		container := CONTAINERS[e.containerIndex]
@@ -58,7 +56,6 @@ func StartExecLocked(e *Exec) (err error) {
 		if e.WorkingDir == "" {
 			e.WorkingDir = container.Spec.Process.Workdir
 		}
-
 
 		cmd = exec.Command("/bin/nsenter", append([]string{
 			fmt.Sprintf("%d", container.Process.Pid),
@@ -76,9 +73,6 @@ func StartExecLocked(e *Exec) (err error) {
 	for _, v := range e.Env {
 		cmd.Env = append(cmd.Env, v)
 	}
-
-
-
 
 	if e.Tty {
 		ptmx, err := pty.Start(cmd)
@@ -126,8 +120,8 @@ func StartExecLocked(e *Exec) (err error) {
 		}()
 
 		var xstderr = &VmmWriter{
-			WriteKey:	spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR),
-			CloseKey:	spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDERR),
+			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR),
+			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDERR),
 		}
 		go func() {
 			io.Copy(xstderr, stderr)

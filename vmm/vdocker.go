@@ -13,7 +13,6 @@ import (
 	"strings"
 )
 
-
 func (self *Vmm) handleListContainers(w http.ResponseWriter, r *http.Request) {
 	x := []map[string]interface{}{
 		{
@@ -129,8 +128,8 @@ func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+type WriteNopCloser struct{ io.Writer }
 
-type WriteNopCloser struct {io.Writer}
 func (self WriteNopCloser) Write(p []byte) (int, error) {
 	return self.Writer.Write(p)
 }
@@ -172,10 +171,10 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 	}
 
 	conn.Write([]byte("HTTP/1.1 101 UPGRADED\r\n" +
-	"Content-Type: application/vnd.docker.raw-stream\r\n" +
-	"Connection: Upgrade\r\n" +
-	"Upgrade: tcp\r\n" +
-	"\r\n"))
+		"Content-Type: application/vnd.docker.raw-stream\r\n" +
+		"Connection: Upgrade\r\n" +
+		"Upgrade: tcp\r\n" +
+		"\r\n"))
 
 	var w2 io.ReadWriteCloser = conn
 	if !self.config.Pod.Containers[index].Process.Tty {
@@ -435,7 +434,6 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	}
 	self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_EXEC), Value: js})
 
-
 	conn, rr, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		panic(err)
@@ -626,7 +624,7 @@ func (self *Vmm) Handler() http.HandlerFunc {
 			}
 			self.handleExecResize(w, r, index)
 
-		} else  {
+		} else {
 
 			w.WriteHeader(404)
 		}

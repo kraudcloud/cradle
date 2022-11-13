@@ -20,6 +20,8 @@ import (
 
 func main() {
 
+	fmt.Println("DOCKER_HOST=tcp://localhost:8665")
+
 	var launchConfig = &spec.Launch{}
 	f, err := os.Open("../launch/launch.json")
 	if err != nil {
@@ -40,7 +42,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("DOCKER_HOST=tcp://localhost:8665")
 
 	go http.Serve(listener, vm.Handler())
 

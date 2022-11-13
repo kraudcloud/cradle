@@ -7,10 +7,6 @@ import (
 	"fmt"
 	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
-	"github.com/mdlayher/vsock"
-	"io"
-	"net"
-	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -25,15 +21,26 @@ func vmm(key uint32, msg []byte) {
 	YC.Write(yeet.Message{Key: key, Value: msg})
 }
 
-func vmm1(port uint32, connected chan bool) {
+func vmm1(connected chan bool) {
 
-	sock, err := vsock.Dial(vsock.Host, port, nil)
+	sock, err := OpenSerial("/dev/hvc1")
 	if err != nil {
 		log.Errorf("vmm: %v", err)
 		return
 	}
 
-	yc, err := yeet.Connect(sock, yeet.Hello("cradle"), yeet.Keepalive(500*time.Millisecond))
+	err = yeet.Sync(sock, time.Second)
+	if err != nil {
+		sock.Close()
+		log.Errorf("vmm: %v", err)
+		return
+	}
+
+	yc, err := yeet.Connect(sock,
+		yeet.Hello("cradle"),
+		yeet.Keepalive(500*time.Millisecond),
+		yeet.HandshakeTimeout(10*time.Second),
+	)
 	if err != nil {
 		sock.Close()
 		log.Errorf("vmm: %v", err)
@@ -164,7 +171,7 @@ func vmm1(port uint32, connected chan bool) {
 					WorkingDir: ctrlmsg.WorkingDir,
 					Env:        ctrlmsg.Env,
 					Tty:        ctrlmsg.Tty,
-					Host:		ctrlmsg.Host,
+					Host:       ctrlmsg.Host,
 
 					containerIndex: ctrlmsg.Container,
 					execIndex:      execnr,
@@ -187,18 +194,12 @@ func vmm1(port uint32, connected chan bool) {
 
 func vmminit() {
 
-	cid, err := vsock.ContextID()
-	if err != nil {
-		exit(fmt.Errorf("vmm: %v", err))
-		return
-	}
-
 	connected := make(chan bool, 1)
 
 	go func() {
 		for {
-			log.Infof("vmm: connecting to vmmv %d", cid)
-			vmm1(cid, connected)
+			log.Infof("vmm: connecting over /dev/hvc1")
+			vmm1(connected)
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -209,40 +210,44 @@ func vmminit() {
 		exit(fmt.Errorf("vmm: timeout"))
 	}
 
-	os.MkdirAll("/vfs/var/run/", 0755)
-	l, err := net.Listen("unix", "/vfs/var/run/docker.sock")
-	if err != nil {
-		log.Warn("axy: Failed to listen on /var/run/docker.sock ", err)
-		return
-	}
+	/*
 
-	go func() {
-		defer l.Close()
-		log.Println("axy: starting docker api proxy")
-		defer log.Warn("axy: docker api proxy stopped")
+		os.MkdirAll("/vfs/var/run/", 0755)
+		l, err := net.Listen("unix", "/vfs/var/run/docker.sock")
+		if err != nil {
+			log.Warn("axy: Failed to listen on /var/run/docker.sock ", err)
+			return
+		}
 
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				log.Warn("axy: Failed accept", err)
-				return
-			}
-			go func() {
-				defer conn.Close()
-				conn2, err := vsock.Dial(vsock.Host, cid, nil)
+		go func() {
+			defer l.Close()
+			log.Println("axy: starting docker api proxy")
+			defer log.Warn("axy: docker api proxy stopped")
+
+			for {
+				conn, err := l.Accept()
 				if err != nil {
-					log.Warn("axy: Failed to dial api", err)
+					log.Warn("axy: Failed accept", err)
 					return
 				}
-				defer conn2.Close()
 				go func() {
+					defer conn.Close()
+					conn2, err := vsock.Dial(vsock.Host, cid, nil)
+					if err != nil {
+						log.Warn("axy: Failed to dial api", err)
+						return
+					}
 					defer conn2.Close()
-					io.Copy(conn, conn2)
+					go func() {
+						defer conn2.Close()
+						io.Copy(conn, conn2)
+					}()
+					io.Copy(conn2, conn)
 				}()
-				io.Copy(conn2, conn)
-			}()
-		}
-	}()
+			}
+		}()
+
+	*/
 }
 
 type VmmWriter struct {

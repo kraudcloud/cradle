@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
-	"github.com/mdlayher/vsock"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -77,40 +77,44 @@ func Start(config *spec.Launch, vport uint16) (*Vmm, error) {
 		self.consumeContainer[i] = make(map[io.WriteCloser]bool)
 	}
 
-	listener, err := vsock.Listen(1123, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	cmd := exec.Command(qemuargs[0], qemuargs[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := listener.Accept()
+	var conn net.Conn
+	for i := 0; i < 100; i++ {
+		conn, err = net.Dial("unix", "cradle.sock")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Millisecond * 10)
+	}
 	if err != nil {
 		cmd.Process.Kill()
 		return nil, err
 	}
-
-	yc, err := yeet.Connect(conn,
-		yeet.Hello("vmm,1"),
+	err = yeet.Sync(conn, time.Second)
+	if err != nil {
+		cmd.Process.Kill()
+		return nil, err
+	}
+	self.yc, err = yeet.Connect(conn,
+		yeet.Hello("libvmm,1"),
 		yeet.Keepalive(500*time.Millisecond),
-		yeet.HandshakeTimeout(100*time.Millisecond),
+		yeet.HandshakeTimeout(10*time.Second),
 	)
-
 	if err != nil {
 		cmd.Process.Kill()
 		return nil, err
 	}
 
-	self.yc = yc
 	self.proc = cmd.Process
 
 	go func() {
@@ -222,7 +226,7 @@ func (self *Vmm) ycread() error {
 						self.execs[execnr].consumer = nil
 					}
 					go func() {
-						time.Sleep(2 *time.Second)
+						time.Sleep(2 * time.Second)
 						delete(self.execs, execnr)
 					}()
 				}
@@ -243,16 +247,21 @@ var qemuargs = []string{
 	"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
 	"-smp", "2",
 	"-m", "128M",
+
 	"-chardev", "stdio,id=virtiocon0",
 	"-device", "virtio-serial-device",
 	"-device", "virtconsole,chardev=virtiocon0",
+
+	"-chardev", "socket,path=cradle.sock,server=on,wait=off,id=cradle",
+	"-device", "virtio-serial-device",
+	"-device", "virtconsole,chardev=cradle",
+
 	"-bios", "../pkg/pflash0",
 	"-kernel", "../pkg/kernel",
 	"-initrd", "../pkg/initrd",
 	"-append", "earlyprintk=hvc0 console=hvc0 loglevel=5",
 	"-device", "virtio-net-device,netdev=eth0",
 	"-netdev", "user,id=eth0",
-	"-device", "vhost-vsock-device,id=vsock1,guest-cid=1123",
 	"-device", "virtio-scsi-device,id=scsi0",
 	"-drive", "format=raw,aio=threads,file=cache.ext4.img,readonly=off,if=none,id=drive-virtio-disk-cache",
 	"-device", "virtio-blk-device,drive=drive-virtio-disk-cache,id=virtio-disk-cache,serial=cache",

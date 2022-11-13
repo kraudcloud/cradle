@@ -52,7 +52,7 @@ func pod() {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		container := &Container{
-			Index:  uint8(i),
+			Index: uint8(i),
 			Stdout: &VmmWriter{
 				WriteKey: spec.YKContainer(uint8(i), spec.YC_SUB_STDOUT),
 				CloseKey: spec.YKContainer(uint8(i), spec.YC_SUB_CLOSE_STDOUT),
