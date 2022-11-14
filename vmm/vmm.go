@@ -39,7 +39,6 @@ type Exec struct {
 type Vmm struct {
 	lock             sync.Mutex
 	config           *spec.Launch
-	vport            uint16
 	yc               *yeet.Sock
 	proc             *os.Process
 	execs            map[uint8]*Exec
@@ -66,16 +65,17 @@ func (self *Vmm) Stop() error {
 	return nil
 }
 
-func Start(config *spec.Launch, vport uint16) (*Vmm, error) {
+func Start(config *spec.Launch) (*Vmm, error) {
 
 	self := &Vmm{
 		config: config,
-		vport:  vport,
 		execs:  make(map[uint8]*Exec),
 	}
 	for i := 0; i < 255; i++ {
 		self.consumeContainer[i] = make(map[io.WriteCloser]bool)
 	}
+
+	qemuargs := qemuArgs(config)
 
 	cmd := exec.Command(qemuargs[0], qemuargs[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -237,43 +237,80 @@ func (self *Vmm) ycread() error {
 	}
 }
 
-var layer1 = "layer.4451b8f2-1d33-48ba-8403-aba9559bb6af.tar.gz"
-var volume1 = "volume.e4ee5e4a-ce31-47d6-a72e-f9e316439b5c.img"
 
-var qemuargs = []string{
-	"qemu-system-x86_64",
-	"-nographic", "-nodefaults", "-no-user-config", "-nographic", "-enable-kvm", "-no-reboot", "-no-acpi",
-	"-cpu", "host",
-	"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
-	"-smp", "2",
-	"-m", "128M",
 
-	"-chardev", "stdio,id=virtiocon0",
-	"-device", "virtio-serial-device",
-	"-device", "virtconsole,chardev=virtiocon0",
+func qemuArgs(config *spec.Launch) []string {
 
-	"-chardev", "socket,path=cradle.sock,server=on,wait=off,id=cradle",
-	"-device", "virtio-serial-device",
-	"-device", "virtconsole,chardev=cradle",
+	var r = []string{
+		"qemu-system-x86_64",
+		"-nographic", "-nodefaults", "-no-user-config", "-nographic", "-enable-kvm", "-no-reboot", "-no-acpi",
+		"-cpu", "host",
+		"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
+		"-smp", "2",
+		"-m", "128M",
 
-	"-bios", "../pkg/pflash0",
-	"-kernel", "../pkg/kernel",
-	"-initrd", "../pkg/initrd",
-	"-append", "earlyprintk=hvc0 console=hvc0 loglevel=5",
-	"-device", "virtio-net-device,netdev=eth0",
-	"-netdev", "user,id=eth0",
-	"-device", "virtio-scsi-device,id=scsi0",
-	"-drive", "format=raw,aio=threads,file=cache.ext4.img,readonly=off,if=none,id=drive-virtio-disk-cache",
-	"-device", "virtio-blk-device,drive=drive-virtio-disk-cache,id=virtio-disk-cache,serial=cache",
-	"-drive", "format=raw,aio=threads,file=swap.img,readonly=off,if=none,id=drive-virtio-disk-swap",
-	"-device", "virtio-blk-device,drive=drive-virtio-disk-swap,id=virtio-disk-swap,serial=swap",
-	"-drive", "format=raw,aio=threads,file=config.tar,readonly=off,if=none,id=drive-virtio-disk-config",
-	"-device", "virtio-blk-device,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config",
-	"-drive", "format=raw,aio=threads,file=" + layer1 + ",readonly=on,if=none,id=drive-virtio-layer1",
-	"-device", "scsi-hd,drive=drive-virtio-layer1,id=virtio-layer1,serial=layer.1,device_id=" + layer1,
-	"-drive", "format=raw,aio=threads,file=" + volume1 + ",readonly=off,if=none,id=drive-virtio-volume1",
-	"-device", "scsi-hd,drive=drive-virtio-volume1,id=virtio-volume1,serial=volume.1,device_id=" + volume1,
+		"-chardev", "stdio,id=virtiocon0",
+		"-device", "virtio-serial-device",
+		"-device", "virtconsole,chardev=virtiocon0",
+
+		"-chardev", "socket,path=cradle.sock,server=on,wait=off,id=cradle",
+		"-device", "virtio-serial-device",
+		"-device", "virtconsole,chardev=cradle",
+
+		"-bios", "../pkg/pflash0",
+		"-kernel", "../pkg/kernel",
+		"-initrd", "../pkg/initrd",
+		"-append", "earlyprintk=hvc0 console=hvc0 loglevel=5",
+
+		"-device", "virtio-net-device,netdev=eth0",
+		"-netdev", "user,id=eth0", //TODO
+
+		"-device", "virtio-scsi-device,id=scsi0",
+
+		"-drive", "format=raw,aio=threads,file=cache.ext4.img,readonly=off,if=none,id=drive-virtio-disk-cache",
+		"-device", "virtio-blk-device,drive=drive-virtio-disk-cache,id=virtio-disk-cache,serial=cache",
+
+		"-drive", "format=raw,aio=threads,file=swap.img,readonly=off,if=none,id=drive-virtio-disk-swap",
+		"-device", "virtio-blk-device,drive=drive-virtio-disk-swap,id=virtio-disk-swap,serial=swap",
+
+		"-drive", "format=raw,aio=threads,file=config.tar,readonly=off,if=none,id=drive-virtio-disk-config",
+		"-device", "virtio-blk-device,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config",
+	}
+
+
+	var layerSeen = make(map[string]bool)
+	for _, container := range config.Pod.Containers {
+		for _, layer := range container.Image.Layers {
+			if layerSeen[layer.ID] {
+				continue
+			}
+			layerSeen[layer.ID] = true
+
+			fileName := fmt.Sprintf("layer.%s.tar.gz", layer.ID)
+
+			r = append(r,
+				"-drive", "format=raw,aio=threads,file=" + fileName+ ",readonly=off,if=none,id=drive-virtio-layer-" + layer.ID,
+				"-device", "scsi-hd,drive=drive-virtio-layer-"+layer.ID + ",device_id=" + fileName,
+			)
+		}
+	}
+
+	for _, volume := range config.Pod.BlockVolumes	{
+		//TODO rbd
+		fileName := fmt.Sprintf("volume.%s.img", volume.ID)
+		r = append(r,
+			"-drive", "format=raw,aio=threads,file=" + fileName+ ",readonly=off,if=none,id=drive-virtio-volume-" + volume.ID,
+			"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID + ",device_id=" + fileName,
+		)
+	}
+
+	fmt.Println(r)
+
+	return r
 }
+
+
+
 
 func writeError(w http.ResponseWriter, err string) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"message": err})

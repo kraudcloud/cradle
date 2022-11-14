@@ -32,7 +32,7 @@ func main() {
 		panic(err)
 	}
 
-	vm, err := vmm.Start(launchConfig, 1337)
+	vm, err := vmm.Start(launchConfig)
 	if err != nil {
 		panic(err)
 	}
