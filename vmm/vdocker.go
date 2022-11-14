@@ -149,9 +149,15 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 	}
 
 	if follow {
+
+		self.lock.Lock()
 		self.consumeContainer[uint8(index)][w2] = true
+		self.lock.Unlock()
+
 		defer func() {
+			self.lock.Lock()
 			delete(self.consumeContainer[uint8(index)], w2)
+			self.lock.Unlock()
 		}()
 		<-r.Context().Done()
 	} else {
@@ -181,7 +187,9 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 		w2 = &DockerMux{inner: conn}
 	}
 
+	self.lock.Lock()
 	self.consumeContainer[uint8(index)][w2] = true
+	self.lock.Unlock()
 
 	go func() {
 		var buf [1024]byte
@@ -276,13 +284,15 @@ func (self *Vmm) handleCradleKill(w http.ResponseWriter, r *http.Request) {
 	signal := strings.ToUpper(r.URL.Query().Get("signal"))
 
 	if signal == "KILL" || signal == "TERM" {
-		self.Stop()
+		self.Stop("killed by api")
 	}
 
 	w.WriteHeader(200)
 }
 
 func (self *Vmm) handleCradleExec(w http.ResponseWriter, r *http.Request) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	var req = &Exec{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -291,12 +301,6 @@ func (self *Vmm) handleCradleExec(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err.Error())
 		return
 	}
-
-	// if !req.AttachStdin {
-	// 	w.WriteHeader(400)
-	// 	writeError(w, "exec requires -i")
-	// 	return
-	// }
 
 	req.host = true
 	for i := uint8(0); i < 255; i++ {
@@ -311,6 +315,8 @@ func (self *Vmm) handleCradleExec(w http.ResponseWriter, r *http.Request) {
 }
 
 func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, index uint8) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	var req = &Exec{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -320,13 +326,25 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 		return
 	}
 
-	// if !req.AttachStdin {
-	// 	w.WriteHeader(400)
-	// 	writeError(w, "exec requires -i")
-	// 	return
-	// }
-
 	req.container = index
+
+
+
+	env := []string{}
+	for k,v := range self.config.Pod.Containers[index].Process.Env {
+		env = append(env, k+"="+v)
+	}
+	for _, v := range req.Env {
+		env = append(env, v)
+	}
+	req.Env = env
+
+	if req.WorkingDir == "" {
+		req.WorkingDir = self.config.Pod.Containers[index].Process.Workdir
+	}
+	if req.WorkingDir == "" {
+		req.WorkingDir = "/"
+	}
 
 	for i := uint8(0); i < 255; i++ {
 		if self.execs[i] == nil {
@@ -342,6 +360,9 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 }
 
 func (self *Vmm) handleExecInspect(w http.ResponseWriter, r *http.Request, execn uint8) {
+
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
@@ -368,6 +389,8 @@ func (self *Vmm) handleExecInspect(w http.ResponseWriter, r *http.Request, execn
 }
 
 func (self *Vmm) handleExecResize(w http.ResponseWriter, r *http.Request, index uint8) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	pw, err := strconv.Atoi(r.URL.Query().Get("w"))
 	if err != nil {
@@ -399,6 +422,9 @@ func (self *Vmm) handleExecResize(w http.ResponseWriter, r *http.Request, index 
 
 func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn uint8) {
 
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
 	var execbody = struct {
 		Detach bool
 		Tty    bool
@@ -409,6 +435,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 		writeError(w, err.Error())
 		return
 	}
+
 
 	if self.execs[execn] == nil {
 		w.WriteHeader(404)
@@ -429,6 +456,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 		Env:        self.execs[execn].Env,
 		Tty:        self.execs[execn].Tty,
 	})
+
 	if err != nil {
 		panic(err)
 	}
@@ -449,29 +477,28 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	var reader io.Reader = rr
 	if !self.execs[execn].Tty {
 		w2 = &DockerMux{inner: conn, reader: rr}
-		// TODO this is confusing. docker cli expects to receive the wrapper but doesnt send it
-		//reader = w2
+		// this is confusing. docker cli expects to receive the wrapper but doesnt send it
+		// reader = w2
 	}
 
 	self.execs[execn].consumer = w2
-	// go func() {
-	// 	<-r.Context().Done()
-	// 	delete(self.consumeExec[execn], w2)
-	// 	conn.Close()
-	// }()
 
-	var buf [1024]byte
-	for {
-		n, err := reader.Read(buf[:])
-		if err != nil {
-			self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_CLOSE_STDIN)})
-			break
+	go func() {
+		var buf [1024]byte
+		for {
+			n, err := reader.Read(buf[:])
+			if err != nil {
+				self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_CLOSE_STDIN)})
+				break
+			}
+			self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_STDIN), Value: buf[:n]})
 		}
-		self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_STDIN), Value: buf[:n]})
-	}
+
+	}()
+
 }
 
-func (self *Vmm) Handler() http.HandlerFunc {
+func (self *Vmm) HttpHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -630,4 +657,8 @@ func (self *Vmm) Handler() http.HandlerFunc {
 		}
 		return
 	}
+}
+
+func writeError(w http.ResponseWriter, err string) {
+	json.NewEncoder(w).Encode(map[string]interface{}{"message": err})
 }

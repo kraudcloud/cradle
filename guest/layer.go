@@ -74,7 +74,7 @@ func unpackLayers() {
 		if gz {
 			reader, err = gzip.NewReader(reader)
 			if err != nil {
-				exit(err)
+				exit(fmt.Errorf("gzip.NewReader: %v", err))
 				return
 			}
 		}
@@ -91,7 +91,7 @@ func unpackLayers() {
 
 					parts := strings.Split(layer.Digest, ":")
 					if len(parts) != 2 || parts[0] != "sha256" {
-						log.Warnf("cannot parse digest of layer %s : %s", uuid, layer.Digest)
+						log.Warnf("cradle: not checking unparsable digest of layer %s : '%s'", uuid, layer.Digest)
 						continue
 					}
 					if parts[1] != hash {
