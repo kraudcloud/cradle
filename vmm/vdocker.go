@@ -144,7 +144,7 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 	w.WriteHeader(200)
 
 	var w2 io.WriteCloser = WriteNopCloser{w}
-	if !self.config.Pod.Containers[index].Process.Tty {
+	if !self.config.Pod.Containers[index].Process.Tty && (r.URL.Query().Get("force_raw") == "") {
 		w2 = &DockerMux{inner: w}
 	}
 
@@ -183,7 +183,7 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 		"\r\n"))
 
 	var w2 io.ReadWriteCloser = conn
-	if !self.config.Pod.Containers[index].Process.Tty {
+	if !self.config.Pod.Containers[index].Process.Tty && (r.URL.Query().Get("force_raw") == "") {
 		w2 = &DockerMux{inner: conn}
 	}
 
@@ -475,7 +475,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 
 	var w2 io.ReadWriteCloser = conn
 	var reader io.Reader = rr
-	if !self.execs[execn].Tty {
+	if !self.execs[execn].Tty && (r.URL.Query().Get("force_raw") == "") {
 		w2 = &DockerMux{inner: conn, reader: rr}
 		// this is confusing. docker cli expects to receive the wrapper but doesnt send it
 		// reader = w2
