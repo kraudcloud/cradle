@@ -57,7 +57,6 @@ func StartExecLocked(e *Exec) (err error) {
 			e.WorkingDir = container.Spec.Process.Workdir
 		}
 
-
 		cmd = exec.Command("/bin/nsenter", append([]string{
 			fmt.Sprintf("%d", container.Process.Pid),
 			container.Spec.ID,

@@ -328,10 +328,8 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 
 	req.container = index
 
-
-
 	env := []string{}
-	for k,v := range self.config.Pod.Containers[index].Process.Env {
+	for k, v := range self.config.Pod.Containers[index].Process.Env {
 		env = append(env, k+"="+v)
 	}
 	for _, v := range req.Env {
@@ -435,7 +433,6 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 		writeError(w, err.Error())
 		return
 	}
-
 
 	if self.execs[execn] == nil {
 		w.WriteHeader(404)

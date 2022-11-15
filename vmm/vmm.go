@@ -3,6 +3,7 @@
 package vmm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aep/yeet"
@@ -12,7 +13,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	"context"
 )
 
 type Exec struct {
@@ -58,10 +58,10 @@ func (self *Vmm) Stop(msg string) error {
 	return nil
 }
 
-func New(config *spec.Launch, ) *Vmm {
+func New(config *spec.Launch) *Vmm {
 	self := &Vmm{
-		config:				config,
-		execs:				make(map[uint8]*Exec),
+		config: config,
+		execs:  make(map[uint8]*Exec),
 	}
 	for i := 0; i < 255; i++ {
 		self.consumeContainer[i] = make(map[io.WriteCloser]bool)
@@ -69,7 +69,6 @@ func New(config *spec.Launch, ) *Vmm {
 
 	return self
 }
-
 
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
@@ -102,7 +101,7 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
 	go func() {
 		defer cancel()
-		for ;; {
+		for {
 			err := self.ycread()
 			if err != nil {
 				return
@@ -218,7 +217,6 @@ func (self *Vmm) ycread() error {
 	} else {
 		fmt.Println("unknown message: ", m.Key)
 	}
-
 
 	return nil
 }
