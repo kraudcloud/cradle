@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"fmt"
 )
 
 func exit(err error) {
@@ -22,6 +23,7 @@ func exit(err error) {
 	}
 
 	log.Errorf("shutdown reason: %s\n", err.Error())
+	fmt.Printf("shutdown reason: %s\n", err.Error())
 
 	//TODO report exit error to k8d
 

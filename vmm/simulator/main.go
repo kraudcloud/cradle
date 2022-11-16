@@ -83,8 +83,14 @@ func main() {
 		cmd.Process.Kill()
 	}()
 
+	defer func() {
+		fmt.Println("LINGER")
+		time.Sleep(60* time.Second)
+	}()
+
 	cmd.Process.Wait()
-	time.Sleep(time.Second)
+
+
 }
 
 func qemuArgs(config *spec.Launch) []string {

@@ -136,6 +136,11 @@ func (self WriteNopCloser) Write(p []byte) (int, error) {
 func (self WriteNopCloser) Close() error {
 	return nil
 }
+func (self WriteNopCloser) Flush() {
+	if flusher, ok := self.Writer.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
 
 func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, index uint8) {
 
@@ -148,20 +153,23 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 		w2 = &DockerMux{inner: w}
 	}
 
-	if follow {
+	self.log[index].WriteTo(w2)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	if follow && ! self.stopped {
 
 		self.lock.Lock()
-		self.consumeContainer[uint8(index)][w2] = true
+		self.consumeContainer[index][w2] = true
 		self.lock.Unlock()
 
 		defer func() {
 			self.lock.Lock()
-			delete(self.consumeContainer[uint8(index)], w2)
+			delete(self.consumeContainer[index], w2)
 			self.lock.Unlock()
 		}()
 		<-r.Context().Done()
-	} else {
-		w2.Write([]byte("simulating does not implement a backlog. use -f\n"))
 	}
 	return
 }
@@ -185,6 +193,16 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 	var w2 io.ReadWriteCloser = conn
 	if !self.config.Pod.Containers[index].Process.Tty && (r.URL.Query().Get("force_raw") == "") {
 		w2 = &DockerMux{inner: conn}
+	}
+
+	self.log[index].WriteTo(w2)
+	if flusher, ok := w2.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	if self.stopped {
+		conn.Close()
+		return
 	}
 
 	self.lock.Lock()

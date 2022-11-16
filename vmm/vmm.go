@@ -35,11 +35,13 @@ type Exec struct {
 }
 
 type Vmm struct {
+	stopped          bool
 	lock             sync.Mutex
 	config           *spec.Launch
 	yc               *yeet.Sock
 	execs            map[uint8]*Exec
 	consumeContainer [255]map[io.WriteCloser]bool
+	log              [255]*Log
 }
 
 func (self *Vmm) Stop(msg string) error {
@@ -67,7 +69,32 @@ func New(config *spec.Launch) *Vmm {
 		self.consumeContainer[i] = make(map[io.WriteCloser]bool)
 	}
 
+	for i := 0; i < len(config.Pod.Containers); i++ {
+		self.log[i] = NewLog(1024 * 1024)
+	}
+
 	return self
+}
+
+type ContextWrapper struct {
+	ctx context.Context
+	err error
+}
+
+func (self *ContextWrapper) Err() error {
+	return self.err
+}
+
+func (self *ContextWrapper) Done() <-chan struct{} {
+	return self.ctx.Done()
+}
+
+func (self *ContextWrapper) Deadline() (deadline time.Time, ok bool) {
+	return self.ctx.Deadline()
+}
+
+func (self *ContextWrapper) Value(key interface{}) interface{} {
+	return self.ctx.Value(key)
 }
 
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
@@ -97,13 +124,16 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx_, cancel := context.WithCancel(context.Background())
+	ctx := &ContextWrapper{ctx: ctx_, err: nil}
 
 	go func() {
 		defer cancel()
 		for {
 			err := self.ycread()
 			if err != nil {
+				ctx.err = err
+				self.stopped = true
 				return
 			}
 		}
@@ -132,6 +162,9 @@ func (self *Vmm) ycread() error {
 		subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
 		if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
+
+			self.log[container].Write(m.Value)
+
 			deleteme := make([]io.WriteCloser, 0)
 			for w, _ := range self.consumeContainer[container] {
 				if d, ok := w.(*DockerMux); ok {
