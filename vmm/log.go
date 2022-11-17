@@ -2,12 +2,14 @@ package vmm
 
 import (
 	"io"
+	"sync"
 )
 
 type Log struct {
 	buffer []byte
 	w      int
 	full   bool
+	lock   sync.RWMutex
 }
 
 func NewLog(size int) *Log {
@@ -19,6 +21,9 @@ func NewLog(size int) *Log {
 }
 
 func (self *Log) Write(p []byte) (n int, err error) {
+
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
 	for {
 		if self.w+len(p) < len(self.buffer) {
@@ -35,11 +40,18 @@ func (self *Log) Write(p []byte) (n int, err error) {
 	}
 }
 
-func (self *Log) Close() error {
-	return nil
+func (self *Log) Clear() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	self.w = 0
+	self.full = false
 }
 
 func (self *Log) WriteTo(w io.Writer) (n int64, err error) {
+
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 
 	n = int64(0)
 

@@ -28,10 +28,17 @@ type Exec struct {
 
 	container uint8
 	host      bool
-	running   bool
-	exitCode  int32
+	state	  spec.ControlMessageState
 
 	consumer io.WriteCloser
+}
+
+
+type Container struct {
+	ID			string
+	consumers	map[io.WriteCloser]bool
+	log         *Log
+	state		spec.ControlMessageState
 }
 
 type Vmm struct {
@@ -40,8 +47,7 @@ type Vmm struct {
 	config           *spec.Launch
 	yc               *yeet.Sock
 	execs            map[uint8]*Exec
-	consumeContainer [255]map[io.WriteCloser]bool
-	log              [255]*Log
+	containers		 map[uint8]*Container
 }
 
 func (self *Vmm) Stop(msg string) error {
@@ -64,13 +70,15 @@ func New(config *spec.Launch) *Vmm {
 	self := &Vmm{
 		config: config,
 		execs:  make(map[uint8]*Exec),
-	}
-	for i := 0; i < 255; i++ {
-		self.consumeContainer[i] = make(map[io.WriteCloser]bool)
+		containers: make(map[uint8]*Container),
 	}
 
 	for i := 0; i < len(config.Pod.Containers); i++ {
-		self.log[i] = NewLog(1024 * 1024)
+		self.containers[uint8(i)] = &Container{
+			ID:			config.Pod.Containers[i].ID,
+			consumers:	make(map[io.WriteCloser]bool),
+			log:		NewLog(1024 * 1024),
+		}
 	}
 
 	return self
@@ -158,15 +166,15 @@ func (self *Vmm) ycread() error {
 
 	} else if m.Key >= spec.YC_KEY_CONTAINER_START && m.Key < spec.YC_KEY_CONTAINER_END {
 
-		container := (m.Key - spec.YC_KEY_CONTAINER_START) >> 8
+		container := uint8((m.Key - spec.YC_KEY_CONTAINER_START) >> 8)
 		subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
 		if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
 
-			self.log[container].Write(m.Value)
+			self.containers[container].log.Write(m.Value)
 
 			deleteme := make([]io.WriteCloser, 0)
-			for w, _ := range self.consumeContainer[container] {
+			for w, _ := range self.containers[container].consumers {
 				if d, ok := w.(*DockerMux); ok {
 					_, err := d.WriteStream(uint8(subkey-spec.YC_SUB_STDIN), m.Value)
 					if err != nil {
@@ -183,14 +191,25 @@ func (self *Vmm) ycread() error {
 				}
 			}
 			for _, w := range deleteme {
-				delete(self.consumeContainer[container], w)
+				delete(self.containers[container].consumers, w)
 			}
 		} else if subkey == spec.YC_SUB_CLOSE_STDOUT || subkey == spec.YC_SUB_CLOSE_STDERR {
-			for w, _ := range self.consumeContainer[container] {
+			for w, _ := range self.containers[container].consumers {
 				w.Close()
 			}
-			self.consumeContainer[container] = make(map[io.WriteCloser]bool)
+			self.containers[container].consumers = make(map[io.WriteCloser]bool)
+		} else if subkey == spec.YC_SUB_STATE {
 
+			json.Unmarshal(m.Value, &self.containers[container].state)
+
+			if	self.containers[container].state.StateNum == spec.STATE_EXITED ||
+				self.containers[container].state.StateNum == spec.STATE_DEAD {
+
+				for w, _ := range self.containers[container].consumers {
+					w.Close()
+				}
+				self.containers[container].consumers = make(map[io.WriteCloser]bool)
+			}
 		}
 	} else if m.Key >= spec.YC_KEY_EXEC_START && m.Key < spec.YC_KEY_EXEC_END {
 
@@ -227,12 +246,12 @@ func (self *Vmm) ycread() error {
 				self.execs[execnr].consumer.Close()
 				self.execs[execnr].consumer = nil
 			}
-		} else if subkey == spec.YC_SUB_EXIT {
-			var cm spec.ControlMessageExit
-			err := json.Unmarshal(m.Value, &cm)
-			if err == nil {
-				self.execs[execnr].running = false
-				self.execs[execnr].exitCode = cm.Code
+		} else if subkey == spec.YC_SUB_STATE {
+			json.Unmarshal(m.Value, &self.execs[execnr].state)
+
+			if  self.execs[execnr].state.StateNum == spec.STATE_EXITED ||
+				self.execs[execnr].state.StateNum == spec.STATE_DEAD {
+
 				if self.execs[execnr].consumer != nil {
 					if closer, ok := self.execs[execnr].consumer.(io.Closer); ok {
 						closer.Close()

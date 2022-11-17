@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"context"
 )
+
 
 func (self *Vmm) handleListContainers(w http.ResponseWriter, r *http.Request) {
 	x := []map[string]interface{}{
@@ -21,15 +23,32 @@ func (self *Vmm) handleListContainers(w http.ResponseWriter, r *http.Request) {
 			"Image":   "cradle",
 			"ImageID": "cradle",
 			"Command": "init",
+			"State":   "running",
 		},
 	}
 	for i, container := range self.config.Pod.Containers {
+
+		status := "Running"
+		state  := self.containers[uint8(i)].state.StateString()
+
+		if	self.containers[uint8(i)].state.StateNum == spec.STATE_EXITED ||
+			self.containers[uint8(i)].state.StateNum == spec.STATE_DEAD{
+
+			status = fmt.Sprintf("Exit (%d) ", self.containers[uint8(i)].state.Code)
+
+			if self.containers[uint8(i)].state.Error != "" {
+				status += " (" + self.containers[uint8(i)].state.Error + ")"
+			}
+		}
+
 		x = append(x, map[string]interface{}{
 			"Id":      fmt.Sprintf("container.%d", i),
 			"Names":   []string{"/" + container.ID},
 			"Image":   container.Image.ID,
 			"ImageID": container.Image.ID,
 			"Command": strings.Join(container.Process.Cmd, " "),
+			"State":   state,
+			"Status":  status,
 		})
 	}
 	json.NewEncoder(w).Encode(x)
@@ -39,11 +58,13 @@ func (self *Vmm) findContainer(id string) (uint8, error) {
 	var vv = strings.Split(id, ".")
 	if len(vv) == 2 && vv[0] == "container" {
 		if index, err := strconv.ParseUint(vv[1], 10, 8); err == nil {
-			return uint8(index), nil
+			if int(index) < len(self.containers) && self.containers[uint8(index)] != nil {
+				return uint8(index), nil
+			}
 		}
 	}
 
-	for i, container := range self.config.Pod.Containers {
+	for i, container := range self.containers {
 		if container.ID == id {
 			return uint8(i), nil
 		}
@@ -128,15 +149,19 @@ func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type WriteNopCloser struct{ io.Writer }
+type WriterCancelCloser struct{
+	Writer io.Writer
+	cancel context.CancelFunc
+}
 
-func (self WriteNopCloser) Write(p []byte) (int, error) {
+func (self *WriterCancelCloser) Write(p []byte) (int, error) {
 	return self.Writer.Write(p)
 }
-func (self WriteNopCloser) Close() error {
+func (self *WriterCancelCloser) Close() error {
+	self.cancel()
 	return nil
 }
-func (self WriteNopCloser) Flush() {
+func (self *WriterCancelCloser) Flush() {
 	if flusher, ok := self.Writer.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -148,12 +173,18 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 
 	w.WriteHeader(200)
 
-	var w2 io.WriteCloser = WriteNopCloser{w}
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	var w2 io.WriteCloser = &WriterCancelCloser{
+		Writer: w,
+		cancel: cancel,
+	}
 	if !self.config.Pod.Containers[index].Process.Tty && (r.URL.Query().Get("force_raw") == "") {
 		w2 = &DockerMux{inner: w}
 	}
 
-	self.log[index].WriteTo(w2)
+	self.containers[index].log.WriteTo(w2)
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -161,15 +192,15 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 	if follow && ! self.stopped {
 
 		self.lock.Lock()
-		self.consumeContainer[index][w2] = true
+		self.containers[index].consumers[w2] = true
 		self.lock.Unlock()
 
 		defer func() {
 			self.lock.Lock()
-			delete(self.consumeContainer[index], w2)
+			delete(self.containers[index].consumers, w2)
 			self.lock.Unlock()
 		}()
-		<-r.Context().Done()
+		<-ctx.Done()
 	}
 	return
 }
@@ -195,7 +226,7 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 		w2 = &DockerMux{inner: conn}
 	}
 
-	self.log[index].WriteTo(w2)
+	self.containers[index].log.WriteTo(w2)
 	if flusher, ok := w2.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -206,7 +237,7 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 	}
 
 	self.lock.Lock()
-	self.consumeContainer[uint8(index)][w2] = true
+	self.containers[uint8(index)].consumers[w2] = true
 	self.lock.Unlock()
 
 	go func() {
@@ -386,8 +417,8 @@ func (self *Vmm) handleExecInspect(w http.ResponseWriter, r *http.Request, execn
 		"CanRemove":    false,
 		"ContainerID":  fmt.Sprintf("container.%d", self.execs[execn].container),
 		"Id":           fmt.Sprintf("exec.%d", execn),
-		"Running":      self.execs[execn].running,
-		"ExitCode":     self.execs[execn].exitCode,
+		"Running":      self.execs[execn].state.StateNum == spec.STATE_RUNNING,
+		"ExitCode":     self.execs[execn].state.Code,
 		"AttachStdin":  true,
 		"AttachStderr": true,
 		"AttachStdout": true,
@@ -457,11 +488,11 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 		return
 	}
 
-	if self.execs[execn].running {
+	if self.execs[execn].state.StateNum == spec.STATE_RUNNING {
 		w.WriteHeader(409)
 		return
 	}
-	self.execs[execn].running = true
+	self.execs[execn].state.StateNum = spec.STATE_RUNNING
 
 	js, err := json.Marshal(&spec.ControlMessageExec{
 		Container:  self.execs[execn].container,

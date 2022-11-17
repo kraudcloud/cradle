@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"encoding/json"
 )
 
 func main_runc() {
@@ -256,9 +257,12 @@ func (c *Container) prepare() error {
 	os.MkdirAll(work, 0755)
 
 	overlay := fmt.Sprintf("lowerdir=%s", lower)
-	for _, layer := range c.Spec.Image.Layers {
-		overlay += fmt.Sprintf(":/cache/layers/%s", layer.ID)
+
+	//note that this is reverse because of overlayfs arg order being newest (top) layer to oldest (bottom) layer
+	for i, _ := range c.Spec.Image.Layers {
+		overlay += fmt.Sprintf(":/cache/layers/%s", c.Spec.Image.Layers[len(c.Spec.Image.Layers)-i-1].ID)
 	}
+
 	overlay += fmt.Sprintf(",upperdir=%s,workdir=%s", upper, work)
 
 	err := syscall.Mount("overlay", root, "overlay", syscall.MS_RELATIME, overlay)
@@ -396,12 +400,27 @@ func (c *Container) run() error {
 		}()
 	}
 
+
+	js, _ := json.Marshal(spec.ControlMessageState{
+		StateNum: spec.STATE_RUNNING,
+	})
+	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
+
 	state, err := cmd.Process.Wait()
 	if err != nil {
+		c.Pty.Close()
 		return err
 	}
 
 	c.Pty.Close()
+
+	js, _ = json.Marshal(spec.ControlMessageState{
+		StateNum: spec.STATE_EXITED,
+		Code:    int32(state.ExitCode()),
+		Error:   state.String(),
+	})
+	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
+
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

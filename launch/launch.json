@@ -1,59 +1,79 @@
 {
   "version": 2,
-  "id": "6115c213-a87a-4206-9b99-0d0235ac560f",
+  "id": "a442e4ae-1507-4443-9df7-52dd750fdba4",
   "pod": {
-    "name": "ravishing_morning",
+    "name": "personable_dream",
     "namespace": "default",
     "containers": [
       {
-        "id": "893aac2a-dcf2-431a-9ceb-626f0bfe218a",
-        "name": "ravishing_morning",
-        "hostname": "ravishing_morning",
+        "id": "b85139f3-aae0-4315-9219-0c24299e54ff",
+        "name": "personable_dream",
+        "hostname": "personable_dream",
         "image": {
-          "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
+          "id": "d9a55a8e-3d47-4a3b-bc28-bee59792cc30",
           "layers": [
             {
-              "id": "4451b8f2-1d33-48ba-8403-aba9559bb6af",
-              "sha256": "e96e057aae67380a4ddb16c337c5c3669d97fdff69ec537f02aa2cc30d814281",
-              "digest": ""
+              "id": "1c400fc5-2226-46c8-93ad-99c8088f8d29",
+              "sha256": "a603fa5e3b4127f210503aaa6189abf6286ee5a73deeaab460f8f33ebc6b64e2",
+              "digest": "sha256:ec4a38999118b78eab6899b913a548cb0b2c9b68fd05aff846a56b628b597f38"
+            },
+            {
+              "id": "b9ee5717-6cbe-4bd8-89ea-22866c1a241c",
+              "sha256": "c39e1cda007e48da53e4b20c928bcefa9e10958c7461c1ca645b5eed9a2ba029",
+              "digest": "sha256:f7ed3797e2964e58da7a396e8b1a98b2aaa84a6190f5fabc57123a92fca78469"
+            },
+            {
+              "id": "8b5535fc-0b2b-4a96-92ee-4fc114264f4c",
+              "sha256": "90cfefba34d7c6a81fe1dfbb4a579998c65ff49092052967f63ddc48f6be85d9",
+              "digest": "sha256:f86e88a471f4cf2a042312c5c2472838b1c806c5ee83b37a2b2e436c76fcdfb7"
+            },
+            {
+              "id": "7c07c059-168e-4e6b-a6aa-697a71eda613",
+              "sha256": "a38226fb7abac764207dffedaee902fdf63c9d4ec076236fb632fe991c4d4b4f",
+              "digest": "sha256:5a5bafd53f766cdebd7cf6ec4d07dda9300b5d5906a7afa0829b41899a82ea6e"
+            },
+            {
+              "id": "dd082b8c-faea-43ff-8ca4-f02a8aa0527a",
+              "sha256": "62583498bae6886d90f3b1cbad2ebbeb68b66948161413087ff27b05cb75b994",
+              "digest": "sha256:e2d75d87993c69701dab59a11e3c081b5d42129048df04e01b50c11bebcf0a5c"
+            },
+            {
+              "id": "5caef8ad-34e0-4368-ab1f-f7014fe78ab2",
+              "sha256": "9802a2cfdb8d8504273e75f503a7c9fb4594782653b8252ec3073ae7b850a235",
+              "digest": "sha256:6cffb086835a28fcada50f39aed18e189ae4d3c139717411d477763274412414"
             }
           ]
         },
         "process": {
-          "tty": true,
           "cmd": [
-            "sh"
+            "/docker-entrypoint.sh",
+            "nginx",
+            "-g",
+            "daemon off;"
           ],
           "env": {
-            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            "NGINX_VERSION": "1.23.2",
+            "NJS_VERSION": "0.7.7",
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "PKG_RELEASE": "1~bullseye"
           },
-          "workdir": "/etc"
+          "workdir": "",
+          "tty": true
         },
         "lifecycle": {
           "restart_on_success": true,
           "restart_on_failure": true,
           "restart_delay": 0,
-          "max_restarts": 2,
+          "max_restarts": 10000000,
           "critical": true
-        },
-        "block_volume_mounts": [{
-            "block_volume_name":  "files",
-            "guest_path":         "/data"
-        }]
-      }
-    ],
-    "block_volumes": [
-        {
-            "id":     "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
-            "name":   "files",
-            "class":  "rbd"
         }
+      }
     ]
   },
-  "network" : {
-    "ip4" : "10.0.2.15/24",
-    "gateway4" : "10.0.2.2",
-    "nameservers" : [ "1.1.1.1"]
+  "network": {
+    "ip4": "10.58.249.3/24",
+    "ip6": "fdcc:c13a:f900::3/40",
+    "gw4": "10.58.249.1",
+    "gw6": "fdcc:c13a:f900::1"
   }
 }
-

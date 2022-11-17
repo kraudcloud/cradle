@@ -123,7 +123,7 @@ func (c *Container) manager(ctx context.Context) {
 
 		delay := c.Spec.Lifecycle.RestartDelay
 		if delay == 0 {
-			delay = 100
+			delay = 300
 		}
 
 		select {

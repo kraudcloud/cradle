@@ -139,13 +139,15 @@ func StartExecLocked(e *Exec) (err error) {
 			exitcode = ps.ExitCode()
 		}
 
-		js, _ := json.Marshal(&spec.ControlMessageExit{
-			Code: int32(exitcode),
-		})
 		EXECS_LOCK.Lock()
 		delete(EXECS, e.execIndex)
 		EXECS_LOCK.Unlock()
-		vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_EXIT), js)
+
+		js, _ := json.Marshal(&spec.ControlMessageState{
+			StateNum:	spec.STATE_EXITED,
+			Code:		int32(exitcode),
+		})
+		vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
 	}()
 
 	EXECS[e.execIndex] = e

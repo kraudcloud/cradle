@@ -179,11 +179,12 @@ func vmm1(connected chan bool) {
 				err = StartExecLocked(ex)
 				if err != nil {
 					vmm(spec.YKExec(execnr, spec.YC_SUB_STDERR), []byte(err.Error()+"\n"))
-					js, _ := json.Marshal(&spec.ControlMessageExit{
+					js, _ := json.Marshal(&spec.ControlMessageState{
 						Code:  1,
 						Error: err.Error(),
+						StateNum: spec.STATE_EXITED,
 					})
-					vmm(spec.YKExec(execnr, spec.YC_SUB_EXIT), js)
+					vmm(spec.YKExec(execnr, spec.YC_SUB_STATE), js)
 				}
 				EXECS_LOCK.Unlock()
 			}
