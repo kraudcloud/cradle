@@ -176,7 +176,7 @@ func main_runc() {
 	if container.Hostname == "" {
 		container.Hostname = "docker"
 	}
-	if err := syscall.Sethostname([]byte(container.Hostname)); err != nil {
+	if err := syscall.Sethostname([]byte(container.Hostname + "." + CONFIG.Pod.Namespace)); err != nil {
 		log.Error("set hostname failed: ", err)
 	}
 
