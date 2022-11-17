@@ -194,11 +194,6 @@ func main_runc() {
 		container.Process.Env["HOME"] = "/root"
 	}
 
-	var flatenv = []string{}
-	for k, v := range container.Process.Env {
-		flatenv = append(flatenv, k+"="+v)
-	}
-
 	err := syscall.Chroot(root)
 	if err != nil {
 		log.Errorf("runc: chroot failed: %s", err)
@@ -215,7 +210,7 @@ func main_runc() {
 
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
 		for _, path := range strings.Split(container.Process.Env["PATH"], ":") {
-			if _, err := os.Stat(filepath.Join(root, path, container.Process.Cmd[0])); err == nil {
+			if _, err := os.Stat(filepath.Join(path, container.Process.Cmd[0])); err == nil {
 				container.Process.Cmd[0] = filepath.Join(path, container.Process.Cmd[0])
 				break
 			}
@@ -224,6 +219,11 @@ func main_runc() {
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
 		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
 		log.Error("PATH: ", container.Process.Env["PATH"])
+	}
+
+	var flatenv = []string{}
+	for k, v := range container.Process.Env {
+		flatenv = append(flatenv, k+"="+v)
 	}
 
 	err = syscall.Exec(container.Process.Cmd[0], container.Process.Cmd, flatenv)
