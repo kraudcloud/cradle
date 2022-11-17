@@ -3,16 +3,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/creack/pty"
-	"github.com/kraudcloud/cradle/spec"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
-	"encoding/json"
+
+	"github.com/creack/pty"
+	"github.com/kraudcloud/cradle/spec"
 )
 
 func main_runc() {
@@ -193,19 +194,6 @@ func main_runc() {
 		container.Process.Env["HOME"] = "/root"
 	}
 
-	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
-		for _, path := range strings.Split(container.Process.Env["PATH"], ":") {
-			if _, err := os.Stat(filepath.Join(root, path, container.Process.Cmd[0])); err == nil {
-				container.Process.Cmd[0] = filepath.Join(path, container.Process.Cmd[0])
-				break
-			}
-		}
-	}
-	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
-		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
-		log.Error("PATH: ", container.Process.Env["PATH"])
-	}
-
 	var flatenv = []string{}
 	for k, v := range container.Process.Env {
 		flatenv = append(flatenv, k+"="+v)
@@ -223,6 +211,19 @@ func main_runc() {
 	err = syscall.Chdir(container.Process.Workdir)
 	if err != nil {
 		log.Warnf("runc: chdir failed: %s", err)
+	}
+
+	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
+		for _, path := range strings.Split(container.Process.Env["PATH"], ":") {
+			if _, err := os.Stat(filepath.Join(root, path, container.Process.Cmd[0])); err == nil {
+				container.Process.Cmd[0] = filepath.Join(path, container.Process.Cmd[0])
+				break
+			}
+		}
+	}
+	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
+		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
+		log.Error("PATH: ", container.Process.Env["PATH"])
 	}
 
 	err = syscall.Exec(container.Process.Cmd[0], container.Process.Cmd, flatenv)
@@ -400,7 +401,6 @@ func (c *Container) run() error {
 		}()
 	}
 
-
 	js, _ := json.Marshal(spec.ControlMessageState{
 		StateNum: spec.STATE_RUNNING,
 	})
@@ -416,11 +416,10 @@ func (c *Container) run() error {
 
 	js, _ = json.Marshal(spec.ControlMessageState{
 		StateNum: spec.STATE_EXITED,
-		Code:    int32(state.ExitCode()),
-		Error:   state.String(),
+		Code:     int32(state.ExitCode()),
+		Error:    state.String(),
 	})
 	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
-
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())
