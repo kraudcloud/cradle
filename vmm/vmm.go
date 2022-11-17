@@ -109,7 +109,7 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
 	var err error
 	var conn net.Conn
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		conn, err = net.Dial("unix", cradleSockPath)
 		if err == nil {
 			break
@@ -117,11 +117,11 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 		time.Sleep(time.Millisecond * 10)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to cradle: %s", err)
 	}
-	err = yeet.Sync(conn, time.Second)
+	err = yeet.Sync(conn, 30 * time.Second)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sync failed: %s", err)
 	}
 	self.yc, err = yeet.Connect(conn,
 		yeet.Hello("libvmm,1"),
