@@ -35,6 +35,9 @@ func network() {
 		return
 	}
 
+	//set mtu
+	err = netlink.LinkSetMTU(link, 1370)
+
 	// set link up
 	err = netlink.LinkSetUp(link)
 	if err != nil {
