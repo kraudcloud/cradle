@@ -1,125 +1,59 @@
 {
   "version": 2,
-  "id": "eac3ff84-9bb0-47ce-b4b0-c292161134c0",
+  "id": "6115c213-a87a-4206-9b99-0d0235ac560f",
   "pod": {
-    "name": "db_0",
-    "namespace": "ghost",
-    "block_volumes": [
-      {
-        "id": "e758aa0a-9fd5-4902-b9b7-8f78929071cf",
-        "name": "database",
-        "class": "rbd"
-      }
-    ],
+    "name": "ravishing_morning",
+    "namespace": "default",
     "containers": [
       {
-        "id": "155e8c35-48c5-4d55-a67e-71dcbfec6550",
-        "name": "db_0",
-        "hostname": "db_0",
+        "id": "893aac2a-dcf2-431a-9ceb-626f0bfe218a",
+        "name": "ravishing_morning",
+        "hostname": "ravishing_morning",
         "image": {
-          "id": "2037a995-238d-4ca8-b9bc-2b517a936165",
+          "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
           "layers": [
             {
-              "id": "52222caa-4ba2-4d87-862c-ae6aabd89fad",
-              "sha256": "5ed150ed0abef03007b46722de75bcb3e517f22532a46146fcec4fb1761d4347",
-              "digest": "sha256:e19c416e92c3aca5b8e1544e2800c0b96ae92db9d24708b7839c1f89a853f333"
-            },
-            {
-              "id": "75d21c0b-1b40-4a7e-a726-9f00a160bb3f",
-              "sha256": "0fede58e17ac8f886aa620315c1c85d2979e38aa05aebf00aacba6d240a18620",
-              "digest": "sha256:8c28202a229b0faff05298e54044252d9c87b0def6e8386c84243b598d502df6"
-            },
-            {
-              "id": "e7232973-4d86-4e34-86e7-f787d6cdc047",
-              "sha256": "994a6ddd6efe5eef3b2be88576cfa2e823d47f0c7db10554360438631d0f786b",
-              "digest": "sha256:361f9bb36104a8b7c27e56df33f2dcc684a483ad947015e16aa57fea53ca9f82"
-            },
-            {
-              "id": "cca741b8-87f2-44b1-b245-7493d9d667c5",
-              "sha256": "028bda79779b4b2f4b249922d92841289aeae64aea45154be16cd17cfe986fdd",
-              "digest": "sha256:aa9776b36550066d6b8c431d1c3e37c00b662df4f8d253dbb51c904dfea9fdf2"
-            },
-            {
-              "id": "30cc0c15-fbbb-456d-ae7b-5a58c619d55e",
-              "sha256": "426fbe9e56a28ac107f62e7fb3b835c320ff0997c762490c853ae8242765da9f",
-              "digest": "sha256:53ddad94478b5b43749c8ae90e2a7454e1b3067d0100ed83a3f41dda48825893"
-            },
-            {
-              "id": "1fb8f330-f9b3-4a99-aec3-d17cee14fba6",
-              "sha256": "1a00e58dd193f3585ff724fd8ba4f7c78d83cf33b851a186b925b36317542f34",
-              "digest": "sha256:02d1293754fb95c45f9f866ddd2a6a6056a35e6f2197fa8a36b07f28cd94ebb5"
-            },
-            {
-              "id": "a3be00aa-bbde-4a77-9121-6c46bd7a5d2f",
-              "sha256": "4a4f64494005d7365861de3808b1c39783259162154a12b6b6694e5303732c2b",
-              "digest": "sha256:fd0dc17d28c8be42731c544c9bab265215fb67c6719c2fe5071366b9471e03c2"
-            },
-            {
-              "id": "6df1d1a4-3b3d-4b63-88d4-7d8250674077",
-              "sha256": "fba8ab3534a7c32755a032486836b05d3d5a724ba6e7127ce259a0ea02fae975",
-              "digest": "sha256:dbda16620895bd9194861b6e8118b1a091cdf073ba8f6b9fd9af66dffb2286fe"
-            },
-            {
-              "id": "edef27c7-6cd9-4502-89c0-15d18e96acb5",
-              "sha256": "2695938edf88c0409d640f6edcb00898d28478ed80505fd449f6c05c2b99ec3d",
-              "digest": "sha256:972db5c274984476a73d8832e79447f2a87c0b32698bf0cb6bd1e8afd9e8f048"
-            },
-            {
-              "id": "c45765d4-ebea-4a1d-ac52-8dddce93ed01",
-              "sha256": "bd31bed30a0ce1417288ba9c6d6a7a03f9004fe85572845956d6502e7f5530aa",
-              "digest": "sha256:af59a4b0714dc42e1fabe1d02951178e83914be633270ac8008feb50fc978d46"
-            },
-            {
-              "id": "ea6970f7-7e7a-44a2-8168-809f10490ca5",
-              "sha256": "b52042432ab337b8e0725a2f5d73fb5b0699468ba71ad69e18cc5e5156e84bc3",
-              "digest": "sha256:b393410f59b5eefa8de8f54eb53ffb93fcb5bbcb5a3b8fa4089394cfd414f998"
+              "id": "4451b8f2-1d33-48ba-8403-aba9559bb6af",
+              "sha256": "e96e057aae67380a4ddb16c337c5c3669d97fdff69ec537f02aa2cc30d814281",
+              "digest": ""
             }
           ]
         },
         "process": {
-          "cmd2": [
-            "/bin/sh",
-            "-c",
-            "for i in $(seq 1 10); do echo $i; sleep 1; done"
-          ],
+          "tty": true,
           "cmd": [
-            "docker-entrypoint.sh",
-            "mysqld"
+            "sh"
           ],
           "env": {
-            "GOSU_VERSION": "1.14",
-            "MYSQL_MAJOR": "8.0",
-            "MYSQL_ROOT_PASSWORD": "fixmesecurerandom",
-            "MYSQL_SHELL_VERSION": "8.0.31-1.el8",
-            "MYSQL_VERSION": "8.0.31-1.el8",
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           },
-          "workdir": "",
-          "tty": true
+          "workdir": "/etc"
         },
         "lifecycle": {
           "restart_on_success": true,
           "restart_on_failure": true,
           "restart_delay": 0,
-          "max_restarts": 100,
+          "max_restarts": 2,
           "critical": true
         },
-        "block_volume_mounts": [
-          {
-            "block_volume_name": "database",
-            "volume_path": "",
-            "guest_path": "/var/lib/mysql",
-            "read_only": false
-          }
-        ]
+        "block_volume_mounts": [{
+            "block_volume_name":  "files",
+            "guest_path":         "/data"
+        }]
       }
+    ],
+    "block_volumes": [
+        {
+            "id":     "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
+            "name":   "files",
+            "class":  "rbd"
+        }
     ]
   },
-  "network": {
-    "ip4": "10.245.128.3/24",
-    "ip6": "fdcc:c1f5:8000::3/40",
-    "gw4": "10.245.128.1",
-    "gw6": "fdcc:c1f5:8000::1",
-    "nameservers" : ["10.245.128.1"]
+  "network" : {
+    "ip4" : "10.0.2.15/24",
+    "gateway4" : "10.0.2.2",
+    "nameservers" : [ "1.1.1.1"]
   }
 }
+

@@ -149,11 +149,9 @@ func qemuArgs(config *spec.Launch) []string {
 	}
 
 	for _, volume := range config.Pod.BlockVolumes {
-		//TODO rbd
 		fileName := fmt.Sprintf("volume.%s.img", volume.ID)
 		r = append(r,
-			"-drive", "format=raw,file=rbd:user_volumes/8fdf37d8-e828-42a2-9c74-523052ad3cad/e758aa0a-9fd5-4902-b9b7-8f78929071cf,id=drive-virtio-volume-"+volume.ID+",throttling.iops-total=500,throttling.iops-size=250000,if=none",
-			//"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
+			"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
 			"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
 		)
 	}
