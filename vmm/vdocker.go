@@ -240,7 +240,18 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 	self.containers[uint8(index)].consumers[w2] = true
 	self.lock.Unlock()
 
+
+
 	go func() {
+		defer func() {
+			if self.config.Pod.Containers[index].Process.Tty {
+				self.lock.Lock()
+				delete(self.containers[uint8(index)].consumers, w2)
+				self.lock.Unlock()
+				conn.Close()
+			}
+		}()
+
 		var buf [1024]byte
 		for {
 			n, err := conn.Read(buf[:])
@@ -248,6 +259,7 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 				self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_CLOSE_STDIN)})
 				return
 			}
+
 			self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_STDIN), Value: buf[:n]})
 		}
 	}()
