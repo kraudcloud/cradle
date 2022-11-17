@@ -281,14 +281,22 @@ func (c *Container) prepare() error {
 		f.Close()
 	}
 
-	// create /etc/resolv.conf
-	f, err = os.Create(fmt.Sprintf("%s/etc/resolv.conf", lower))
+	// copy /etc/resolv.conf
+	fi, err := os.Open("/etc/resolv.conf")
 	if err != nil {
-		log.Error(fmt.Sprintf("create resolv.conf file: %s", err))
+		log.Error(fmt.Sprintf("open /etc/resolv.conf: %s", err))
 	} else {
-		//FIXME gateway
-		f.WriteString("nameserver 1.1.1.1\n")
-		f.Close()
+
+		f, err = os.Create(fmt.Sprintf("%s/etc/resolv.conf", lower))
+		if err != nil {
+			log.Error(fmt.Sprintf("create resolv.conf file: %s", err))
+		} else {
+			_, err = io.Copy(f, fi)
+			if err != nil {
+				log.Error(fmt.Sprintf("copy resolv.conf file: %s", err))
+			}
+			f.Close()
+		}
 	}
 
 	// create /etc/hosts
