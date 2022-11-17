@@ -51,11 +51,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer vm.Stop("end")
+	defer vm.Shutdown("end")
 
 	go func() {
 		<-vmc.Done()
-		cmd.Process.Kill()
+		fmt.Printf("cradle.sock disconnected: %s\n", vmc.Err())
 	}()
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8665")
@@ -67,7 +67,6 @@ func main() {
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc,
-		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
@@ -75,17 +74,18 @@ func main() {
 	go func() {
 		sig := <-sigc
 		fmt.Println("TERMINATING")
+		vm.Shutdown(fmt.Sprintf("signal %s", sig))
 		go func() {
 			<-sigc
+			cmd.Process.Kill()
 			os.Exit(1)
 		}()
-		vm.Stop(fmt.Sprintf("signal %s", sig))
-		cmd.Process.Kill()
 	}()
 
 	defer func() {
 		fmt.Println("LINGER")
 		time.Sleep(60* time.Second)
+		cmd.Process.Kill()
 	}()
 
 	cmd.Process.Wait()
@@ -96,7 +96,7 @@ func main() {
 func qemuArgs(config *spec.Launch) []string {
 
 	var r = []string{
-		"qemu-system-x86_64",
+		"/opt/kraud/qemu/bin/qemu-system-x86_64",
 		"-nographic", "-nodefaults", "-no-user-config", "-nographic", "-enable-kvm", "-no-reboot", "-no-acpi",
 		"-cpu", "host",
 		"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
@@ -152,7 +152,8 @@ func qemuArgs(config *spec.Launch) []string {
 		//TODO rbd
 		fileName := fmt.Sprintf("volume.%s.img", volume.ID)
 		r = append(r,
-			"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
+			"-drive", "format=raw,file=rbd:user_volumes/8fdf37d8-e828-42a2-9c74-523052ad3cad/e758aa0a-9fd5-4902-b9b7-8f78929071cf,id=drive-virtio-volume-"+volume.ID+",throttling.iops-total=500,throttling.iops-size=250000,if=none",
+			//"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
 			"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
 		)
 	}
@@ -161,3 +162,6 @@ func qemuArgs(config *spec.Launch) []string {
 
 	return r
 }
+
+
+

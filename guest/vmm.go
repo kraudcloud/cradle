@@ -68,8 +68,7 @@ func vmm1(connected chan bool) {
 			return
 		}
 		if m.Key == spec.YC_KEY_SHUTDOWN {
-			exit(fmt.Errorf("vmm: %s", m.Value))
-			return
+			go exit(fmt.Errorf("vmm: %s", m.Value))
 		} else if m.Key >= spec.YC_KEY_CONTAINER_START && m.Key <= spec.YC_KEY_CONTAINER_END {
 
 			container := (m.Key - spec.YC_KEY_CONTAINER_START) >> 8

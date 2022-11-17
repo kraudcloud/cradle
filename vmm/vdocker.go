@@ -345,7 +345,7 @@ func (self *Vmm) handleCradleKill(w http.ResponseWriter, r *http.Request) {
 	signal := strings.ToUpper(r.URL.Query().Get("signal"))
 
 	if signal == "KILL" || signal == "TERM" {
-		self.Stop("killed by api")
+		self.Shutdown("killed by api")
 	}
 
 	w.WriteHeader(200)

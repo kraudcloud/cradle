@@ -6,32 +6,13 @@ import (
 	"bufio"
 	"github.com/kraudcloud/cradle/spec"
 	"os"
-	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 	"fmt"
 )
 
-func exit(err error) {
-
-	vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
-
-	//stop all rescheduling
-	for _, container := range CONTAINERS {
-		container.stop()
-	}
-
-	log.Errorf("shutdown reason: %s\n", err.Error())
-	fmt.Printf("shutdown reason: %s\n", err.Error())
-
-	//TODO report exit error to k8d
-
-	cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
-
+func procmounts() []string {
 	var mounts []string
 	f, err := os.Open("/proc/mounts")
 	if err == nil {
@@ -44,17 +25,44 @@ func exit(err error) {
 			}
 		}
 	}
+	return mounts
+}
+
+func exit(err error) {
+
+	for _, container := range CONTAINERS {
+		container.stop()
+	}
+
+	log.Errorf("shutdown reason: %s\n", err.Error())
+	fmt.Printf("shutdown reason: %s\n", err.Error())
+	vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
+
+	// cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// cmd.Run()
 
 	syscall.Sync()
 
 	for i := 0; i < 10; i++ {
-		for _, m := range mounts {
+		for _, m := range procmounts() {
+			log.Printf("unmounting %s", m)
 			if m == "/proc" {
 				continue
 			}
 			syscall.Unmount(m, 0)
 		}
 	}
+
+	for _, m := range procmounts() {
+		if m == "/proc" || m == "/sys"  || m == "/dev" || m == "/dev/pts" || m == "/" {
+			continue
+		}
+		log.Warnf("leftover mountpoint '%s' ", m)
+	}
+
+
 
 	log.Errorf("poweroff")
 

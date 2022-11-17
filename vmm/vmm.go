@@ -50,19 +50,14 @@ type Vmm struct {
 	containers		 map[uint8]*Container
 }
 
-func (self *Vmm) Stop(msg string) error {
+func (self *Vmm) Shutdown(msg string) error {
 
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	if self.yc != nil {
 		self.yc.Write(yeet.Message{Key: spec.YC_KEY_SHUTDOWN, Value: []byte(msg)})
-		time.Sleep(time.Second)
-		self.yc.Close()
 	}
-
-	self.yc = nil
-
 	return nil
 }
 
@@ -153,7 +148,7 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 func (self *Vmm) ycread() error {
 	m, err := self.yc.Read()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read from cradle: %s", err)
 	}
 
 	self.lock.Lock()
@@ -161,9 +156,8 @@ func (self *Vmm) ycread() error {
 
 	if m.Key == spec.YC_KEY_STARTUP {
 	} else if m.Key == spec.YC_KEY_SHUTDOWN {
-
-		return fmt.Errorf("vmm shutdown: %s", m.Value)
-
+		fmt.Printf("vmm shutdown: %s\n", m.Value)
+		self.stopped = true
 	} else if m.Key >= spec.YC_KEY_CONTAINER_START && m.Key < spec.YC_KEY_CONTAINER_END {
 
 		container := uint8((m.Key - spec.YC_KEY_CONTAINER_START) >> 8)

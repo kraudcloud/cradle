@@ -12,8 +12,26 @@ func network() {
 		return
 	}
 
-	// Set up the network
-	link, err := netlink.LinkByName("eth0")
+	// loopback
+
+	link, err := netlink.LinkByName("lo")
+	if err != nil {
+		log.Error("lo.LinkByName: ", err)
+		return
+	}
+	err = netlink.LinkSetUp(link)
+	if err != nil {
+		log.Error("lo.LinkSetUp: ", err)
+	}
+	err = netlink.AddrAdd(link, &netlink.Addr{IPNet: &net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.CIDRMask(8, 32)}})
+	if err != nil {
+		log.Warn("lo.AddrAdd: ", err)
+	}
+
+
+
+	// eth0
+	link, err = netlink.LinkByName("eth0")
 	if err != nil {
 		log.Error("netlink.LinkByName: ", err)
 		return
