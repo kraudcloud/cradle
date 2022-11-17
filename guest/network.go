@@ -106,4 +106,5 @@ func network() {
 	for _, nameserver := range CONFIG.Network.Nameservers {
 		f.WriteString("nameserver " + nameserver + "\n")
 	}
+	f.WriteString("search " + CONFIG.Pod.Namespace + "\n")
 }
