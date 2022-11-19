@@ -307,9 +307,9 @@ func (c *Container) prepare() error {
 	if err != nil {
 		log.Error(fmt.Sprintf("create hosts file: %s", err))
 	} else {
-		f.WriteString("127.0.0.1")
+		f.WriteString("127.0.0.1 localhost ")
 		for _, host := range CONFIG.Pod.Containers {
-			f.WriteString(fmt.Sprintf(" %s %s", host.Hostname, host.Name))
+			f.WriteString(fmt.Sprintf("%s %s", host.Hostname, host.Name))
 		}
 		f.WriteString("\n")
 		f.Close()
