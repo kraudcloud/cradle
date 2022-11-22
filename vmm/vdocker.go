@@ -74,10 +74,13 @@ func (self *Vmm) findContainer(id string) (uint8, error) {
 
 func (self *Vmm) findExec(id string) (uint8, error) {
 	var vv = strings.Split(id, ".")
-	if len(vv) != 2 {
+	if len(vv) != 3 {
 		return 0, fmt.Errorf("invalid exec id")
 	}
-	index, err := strconv.ParseUint(vv[1], 10, 8)
+	if vv[1] != self.config.ID {
+		return 0, fmt.Errorf("exec on wrong pod")
+	}
+	index, err := strconv.ParseUint(vv[2], 10, 8)
 	if err != nil {
 		return 0, fmt.Errorf("invalid exec id")
 	}
@@ -368,7 +371,7 @@ func (self *Vmm) handleCradleExec(w http.ResponseWriter, r *http.Request) {
 		if self.execs[i] == nil {
 			self.execs[i] = req
 			w.WriteHeader(201)
-			w.Write([]byte(fmt.Sprintf(`{"Id":"exec.%d"}`, i)))
+			w.Write([]byte(fmt.Sprintf(`{"Id":"exec.%s.%d"}`, self.config.ID, i)))
 			return
 		}
 	}
@@ -409,7 +412,7 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 		if self.execs[i] == nil {
 			self.execs[i] = req
 			w.WriteHeader(201)
-			w.Write([]byte(fmt.Sprintf(`{"Id":"exec.%d"}`, i)))
+			w.Write([]byte(fmt.Sprintf(`{"Id":"exec.%s.%d"}`, self.config.ID, i)))
 			return
 		}
 	}
