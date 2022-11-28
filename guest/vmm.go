@@ -25,8 +25,11 @@ func vmm1(connected chan bool) {
 
 	sock, err := OpenSerial("/dev/hvc1")
 	if err != nil {
-		log.Errorf("vmm: %v", err)
-		return
+		sock, err = OpenSerial("/dev/hvc0")
+		if err != nil {
+			log.Errorf("vmm: /dev/hvc0: %v", err)
+			return
+		}
 	}
 
 	err = yeet.Sync(sock, time.Second)
@@ -198,7 +201,7 @@ func vmminit() {
 
 	go func() {
 		for {
-			log.Infof("vmm: connecting over /dev/hvc1")
+			log.Infof("vmm: connecting over /dev/hvc*")
 			vmm1(connected)
 			time.Sleep(1 * time.Second)
 		}

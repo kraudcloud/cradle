@@ -1,4 +1,4 @@
-FIRMWARE=qboot
+VARIANT=default
 
 all: vmm/vmm pkg.tar
 
@@ -9,14 +9,14 @@ vmm/vmm: .PHONY
 
 pkg.tar: pkg/pflash0 pkg/kernel pkg/initrd test/config.tar
 	cd pkg &&\
-	docker build . -t cradle:$$(git describe --tags --always)
+	docker build . -t cradle:$$(git describe --tags --always)-$(VARIANT)
 
 build/qboot:
 	mkdir -p build
 	cd build &&\
 	git clone https://github.com/bonzini/qboot.git
 
-build/.qboot: build/qboot
+build/.firmware-default: build/qboot
 	cd build/qboot &&\
 	git checkout 8ca302e86d685fa05b16e2b208888243da319941 &&\
 	meson build && ninja -C build
@@ -31,7 +31,7 @@ build/ovmf:
 	git checkout edk2-stable202208 &&\
 	git submodule update --init --recursive
 
-build/.ovmf: build/ovmf
+build/.firmware-snp: build/ovmf
 	cd build/ovmf &&\
 	make -C BaseTools &&\
 	bash -c '. ./edksetup.sh --reconfig &&  build -b RELEASE -q --cmd-len=64436 -n20 -t GCC5 -a X64 -p OvmfPkg/OvmfPkgX64.dsc'
@@ -39,7 +39,7 @@ build/.ovmf: build/ovmf
 	cp -f build/ovmf/Build/OvmfX64/RELEASE_*/FV/OVMF_VARS.fd pkg/pflash1
 	touch $@
 
-pkg/pflash0: build/.$(FIRMWARE)
+pkg/pflash0: build/.firmware-$(VARIANT)
 
 build/linux:
 	mkdir -p build
