@@ -125,7 +125,7 @@ func main_runc() {
 	// /run
 
 	os.MkdirAll(root+"/run", 0777)
-	if err := syscall.Mount("none", root+"/run", "tmpfs", syscall.MS_NOSUID|syscall.MS_NOEXEC|syscall.MS_NODEV, ""); err != nil {
+	if err := syscall.Mount("none", root+"/run", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
 		log.Error("mount /run failed: ", err)
 	}
 	defer func() {
