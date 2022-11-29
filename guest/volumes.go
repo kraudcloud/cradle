@@ -129,6 +129,11 @@ func volumes() {
 		}
 		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
 
+
+		// docker mounts volumes as uid 1000, and some containers rely on that. scary
+		os.Chown("/var/lib/docker/volumes/"+ref.Name+"/_data", 1000, 1000)
+
+
 	}
 }
 
