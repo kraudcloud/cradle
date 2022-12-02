@@ -5,7 +5,6 @@ package vmm
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
 	"io"
 	"net/http"
@@ -258,6 +257,10 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 
 
 	go func() {
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		
 		defer func() {
 			if self.config.Pod.Containers[index].Process.Tty {
 				self.containers[index].log.Detach(w2)
@@ -265,17 +268,17 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 			}
 		}()
 
-		// TODO needs to hold back stdin until container is actually started
-
 		for {
 			var buf [1024]byte
 			n, err := conn.Read(buf[:])
 			if err != nil {
-				self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_CLOSE_STDIN)})
+				if !self.config.Pod.Containers[index].Process.Tty {
+					self.ycWriteContainer(ctx, index, spec.YC_SUB_CLOSE_STDIN, nil)
+				}
 				return
 			}
 
-			self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_STDIN), Value: buf[:n]})
+			self.ycWriteContainer(ctx, index, spec.YC_SUB_STDIN, buf[:n])
 		}
 	}()
 
@@ -305,7 +308,7 @@ func (self *Vmm) handleContainerResize(w http.ResponseWriter, r *http.Request, i
 		panic(err)
 	}
 
-	self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_WINCH), Value: j})
+	self.ycWriteContainer(r.Context(), index, spec.YC_SUB_WINCH, j)
 
 	w.WriteHeader(200)
 	return
@@ -349,7 +352,7 @@ func (self *Vmm) handleContainerKill(w http.ResponseWriter, r *http.Request, ind
 		panic(err)
 	}
 
-	self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_SIGNAL), Value: j})
+	self.ycWriteContainer(r.Context(), index, spec.YC_SUB_SIGNAL, j)
 
 	w.WriteHeader(200)
 	return
@@ -487,7 +490,7 @@ func (self *Vmm) handleExecResize(w http.ResponseWriter, r *http.Request, index 
 		panic(err)
 	}
 
-	self.ycWrite(yeet.Message{Key: spec.YKExec(uint8(index), spec.YC_SUB_WINCH), Value: j})
+	self.ycWriteExec(r.Context(), index, spec.YC_SUB_WINCH, j)
 
 	w.WriteHeader(200)
 	return
@@ -533,7 +536,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	if err != nil {
 		panic(err)
 	}
-	self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_EXEC), Value: js})
+	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
 
 	conn, rr, err := w.(http.Hijacker).Hijack()
 	if err != nil {
@@ -557,14 +560,17 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	self.execs[execn].consumer = w2
 
 	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		var buf [1024]byte
 		for {
 			n, err := reader.Read(buf[:])
 			if err != nil {
-				self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_CLOSE_STDIN)})
+				self.ycWriteExec(ctx, execn, spec.YC_SUB_CLOSE_STDIN, nil)
 				break
 			}
-			self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_STDIN), Value: buf[:n]})
+			self.ycWriteExec(ctx, execn, spec.YC_SUB_STDIN, buf[:n])
 		}
 
 	}()

@@ -39,6 +39,8 @@ type Container struct {
 	ID			string
 	log         *Log
 	state		spec.ControlMessageState
+
+	seenNotify	chan struct{}
 	seen		atomic.Bool
 }
 
@@ -47,7 +49,6 @@ type Vmm struct {
 	lock             sync.Mutex
 	config           *spec.Launch
 	yc               *yeet.Sock
-	ycc				 chan yeet.Message
 	execs            map[uint8]*Exec
 	containers		 map[uint8]*Container
 
@@ -80,13 +81,13 @@ func New(config *spec.Launch) *Vmm {
 		execs:  make(map[uint8]*Exec),
 		containers: make(map[uint8]*Container),
 		cradleLog: NewLog(1024 * 1024),
-		ycc:	make(chan yeet.Message, 200),
 	}
 
 	for i := 0; i < len(config.Pod.Containers); i++ {
 		self.containers[uint8(i)] = &Container{
 			ID:			config.Pod.Containers[i].ID,
 			log:		NewLog(1024 * 1024),
+			seenNotify:	make(chan struct{}),
 		}
 	}
 
@@ -114,14 +115,30 @@ func (self *ContextWrapper) Value(key interface{}) interface{} {
 	return self.ctx.Value(key)
 }
 
+func  (self *Vmm) ycWriteExec(ctx context.Context,index uint8, subkey uint8, b []byte) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
-
-func  (self *Vmm) ycWrite(msg yeet.Message) {
-	select {
-		case self.ycc <- msg:
-		default:
-			panic("yc overflow");
+	if self.yc != nil {
+		self.yc.Write(yeet.Message{Key:  spec.YKExec(index, subkey), Value: b})
 	}
+}
+
+func  (self *Vmm) ycWriteContainer(ctx context.Context, index uint8, subkey uint8, b []byte) {
+
+	select {
+		case <- ctx.Done():
+			return
+		case <- time.After(10 * time.Second):
+			fmt.Printf("ycWriteContainer timeout, index=%d, subkey=%d\n", index, subkey)
+			return;
+		case <-self.containers[index].seenNotify:
+	}
+
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	self.yc.Write(yeet.Message{Key: spec.YKContainer(index, subkey), Value: b})
 }
 
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
@@ -153,17 +170,6 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
 	ctx_, cancel := context.WithCancel(context.Background())
 	ctx := &ContextWrapper{ctx: ctx_, err: nil}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg := <-self.ycc:
-				self.yc.Write(msg)
-			}
-		}
-	}()
 
 	go func() {
 		defer cancel()
@@ -199,6 +205,7 @@ func (self *Vmm) ycread() error {
 		subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
 		if !self.containers[container].seen.Swap(true) {
+			close (self.containers[container].seenNotify)
 			self.containers[container].log.Write([]byte("[  o ~.~ o   ] entering container " + self.config.Pod.Containers[container].Name + " \r\n\r\n"))
 		}
 
