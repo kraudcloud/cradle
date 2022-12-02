@@ -1,4 +1,4 @@
-VARIANT=default
+VARIANT=snp
 
 all: vmm/vmm pkg.tar
 
@@ -83,7 +83,7 @@ build/initrd/init: .PHONY build/initrd/usr/sbin/cryptsetup
 	export CGO_LDFLAGS="-Os -L$${BUILDROOT}/output/staging/lib -L -L$${SYSROOT}/output/staging/usr/lib" &&\
 	export CGO_ENABLED=1 &&\
 	export CC=$${BUILDROOT}/output/host/bin/x86_64-buildroot-linux-musl-gcc &&\
-	go build -tags nethttpomithttp2 -ldflags="-s -w -linkmode external" -o ../build/initrd/init -asmflags -trimpath
+	go build -tags nethttpomithttp2 -tags $(VARIANT) -ldflags="-s -w -linkmode external" -o ../build/initrd/init -asmflags -trimpath
 	mkdir -p build/initrd/bin
 	ln -sf ../init build/initrd/bin/runc
 	ln -sf ../init build/initrd/bin/nsenter
