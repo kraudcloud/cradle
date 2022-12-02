@@ -48,6 +48,23 @@ type Vmm struct {
 	yc               *yeet.Sock
 	execs            map[uint8]*Exec
 	containers		 map[uint8]*Container
+
+	cradleLog		*Log
+	cradleLogConsumers map[io.WriteCloser]bool
+}
+
+func (self *Vmm) Write(p []byte) (n int, err error) {
+	deleteme := make([]io.WriteCloser, 0)
+	for consumer, _ := range self.cradleLogConsumers {
+		_, err := consumer.Write(p)
+		if err != nil {
+			deleteme = append(deleteme, consumer)
+		}
+	}
+	for _, consumer := range deleteme {
+		delete(self.cradleLogConsumers, consumer)
+	}
+	return self.cradleLog.Write(p)
 }
 
 func (self *Vmm) Shutdown(msg string) error {
@@ -66,6 +83,8 @@ func New(config *spec.Launch) *Vmm {
 		config: config,
 		execs:  make(map[uint8]*Exec),
 		containers: make(map[uint8]*Container),
+		cradleLog: NewLog(1024 * 1024),
+		cradleLogConsumers: make(map[io.WriteCloser]bool),
 	}
 
 	for i := 0; i < len(config.Pod.Containers); i++ {

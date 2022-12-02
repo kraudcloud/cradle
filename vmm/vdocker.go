@@ -149,6 +149,33 @@ func (self *Vmm) handleContainerInspect(w http.ResponseWriter, r *http.Request, 
 }
 
 func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
+	follow := r.URL.Query().Get("follow") == "true" || r.URL.Query().Get("follow") == "1"
+
+	w.WriteHeader(200)
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	w2 := &DockerMux{inner: w}
+
+	self.cradleLog.WriteTo(w2)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	if follow && ! self.stopped {
+
+		self.lock.Lock()
+		self.cradleLogConsumers[w2] = true
+		self.lock.Unlock()
+
+		defer func() {
+			self.lock.Lock()
+			delete(self.cradleLogConsumers, w2)
+			self.lock.Unlock()
+		}()
+		<-ctx.Done()
+	}
 	return
 }
 

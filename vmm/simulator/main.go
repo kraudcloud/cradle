@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"io"
 )
 
 func main() {
@@ -40,8 +41,8 @@ func main() {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = io.MultiWriter(vm, os.Stdout)
+	cmd.Stderr = io.MultiWriter(vm, os.Stderr)
 	err = cmd.Start()
 	if err != nil {
 		panic(err)
