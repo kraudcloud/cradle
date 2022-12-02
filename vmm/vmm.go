@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -36,9 +37,9 @@ type Exec struct {
 
 type Container struct {
 	ID			string
-	consumers	map[io.WriteCloser]bool
 	log         *Log
 	state		spec.ControlMessageState
+	seen		atomic.Bool
 }
 
 type Vmm struct {
@@ -46,23 +47,18 @@ type Vmm struct {
 	lock             sync.Mutex
 	config           *spec.Launch
 	yc               *yeet.Sock
+	ycc				 chan yeet.Message
 	execs            map[uint8]*Exec
 	containers		 map[uint8]*Container
 
 	cradleLog		*Log
-	cradleLogConsumers map[io.WriteCloser]bool
 }
 
 func (self *Vmm) Write(p []byte) (n int, err error) {
-	deleteme := make([]io.WriteCloser, 0)
-	for consumer, _ := range self.cradleLogConsumers {
-		_, err := consumer.Write(p)
-		if err != nil {
-			deleteme = append(deleteme, consumer)
+	for _, container := range self.containers {
+		if !container.seen.Load() {
+			container.log.Write(p)
 		}
-	}
-	for _, consumer := range deleteme {
-		delete(self.cradleLogConsumers, consumer)
 	}
 	return self.cradleLog.Write(p)
 }
@@ -84,13 +80,12 @@ func New(config *spec.Launch) *Vmm {
 		execs:  make(map[uint8]*Exec),
 		containers: make(map[uint8]*Container),
 		cradleLog: NewLog(1024 * 1024),
-		cradleLogConsumers: make(map[io.WriteCloser]bool),
+		ycc:	make(chan yeet.Message, 200),
 	}
 
 	for i := 0; i < len(config.Pod.Containers); i++ {
 		self.containers[uint8(i)] = &Container{
 			ID:			config.Pod.Containers[i].ID,
-			consumers:	make(map[io.WriteCloser]bool),
 			log:		NewLog(1024 * 1024),
 		}
 	}
@@ -117,6 +112,16 @@ func (self *ContextWrapper) Deadline() (deadline time.Time, ok bool) {
 
 func (self *ContextWrapper) Value(key interface{}) interface{} {
 	return self.ctx.Value(key)
+}
+
+
+
+func  (self *Vmm) ycWrite(msg yeet.Message) {
+	select {
+		case self.ycc <- msg:
+		default:
+			panic("yc overflow");
+	}
 }
 
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
@@ -148,6 +153,17 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
 	ctx_, cancel := context.WithCancel(context.Background())
 	ctx := &ContextWrapper{ctx: ctx_, err: nil}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg := <-self.ycc:
+				self.yc.Write(msg)
+			}
+		}
+	}()
 
 	go func() {
 		defer cancel()
@@ -182,35 +198,16 @@ func (self *Vmm) ycread() error {
 		container := uint8((m.Key - spec.YC_KEY_CONTAINER_START) >> 8)
 		subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
+		if !self.containers[container].seen.Swap(true) {
+			self.containers[container].log.Write([]byte("[  o ~.~ o   ] entering container " + self.config.Pod.Containers[container].Name + " \r\n\r\n"))
+		}
+
 		if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
 
-			self.containers[container].log.Write(m.Value)
+			self.containers[container].log.WriteWithDockerStream(m.Value, uint8(subkey-spec.YC_SUB_STDIN))
 
-			deleteme := make([]io.WriteCloser, 0)
-			for w, _ := range self.containers[container].consumers {
-				if d, ok := w.(*DockerMux); ok {
-					_, err := d.WriteStream(uint8(subkey-spec.YC_SUB_STDIN), m.Value)
-					if err != nil {
-						deleteme = append(deleteme, w)
-					}
-				} else {
-					_, err := w.Write(m.Value)
-					if err != nil {
-						deleteme = append(deleteme, w)
-					}
-					if f, ok := w.(http.Flusher); ok {
-						f.Flush()
-					}
-				}
-			}
-			for _, w := range deleteme {
-				delete(self.containers[container].consumers, w)
-			}
 		} else if subkey == spec.YC_SUB_CLOSE_STDOUT || subkey == spec.YC_SUB_CLOSE_STDERR {
-			for w, _ := range self.containers[container].consumers {
-				w.Close()
-			}
-			self.containers[container].consumers = make(map[io.WriteCloser]bool)
+			self.containers[container].log.Close()
 		} else if subkey == spec.YC_SUB_STATE {
 
 			json.Unmarshal(m.Value, &self.containers[container].state)
@@ -218,10 +215,7 @@ func (self *Vmm) ycread() error {
 			if	self.containers[container].state.StateNum == spec.STATE_EXITED ||
 				self.containers[container].state.StateNum == spec.STATE_DEAD {
 
-				for w, _ := range self.containers[container].consumers {
-					w.Close()
-				}
-				self.containers[container].consumers = make(map[io.WriteCloser]bool)
+				self.containers[container].log.Close()
 			}
 		}
 	} else if m.Key >= spec.YC_KEY_EXEC_START && m.Key < spec.YC_KEY_EXEC_END {

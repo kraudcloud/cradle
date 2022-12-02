@@ -77,6 +77,11 @@ func vmm1(connected chan bool) {
 			container := (m.Key - spec.YC_KEY_CONTAINER_START) >> 8
 			subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
+			if int(container) >= len(CONTAINERS) || CONTAINERS[container] == nil {
+				log.Errorf("vmm: message for non existing container %d ", container)
+				continue
+			}
+
 			if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
 				if CONTAINERS[container] != nil || CONTAINERS[container].Stdin != nil {
 					CONTAINERS[container].Stdin.Write(m.Value)
@@ -87,10 +92,6 @@ func vmm1(connected chan bool) {
 				}
 			} else if subkey == spec.YC_SUB_SIGNAL {
 
-				if int(container) >= len(CONTAINERS) || CONTAINERS[container] == nil {
-					log.Errorf("vmm: signal for non existing container %d ", container)
-					continue
-				}
 
 				var ctrlmsg spec.ControlMessageSignal
 				err := json.Unmarshal(m.Value, &ctrlmsg)

@@ -164,15 +164,9 @@ func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if follow && ! self.stopped {
-
-		self.lock.Lock()
-		self.cradleLogConsumers[w2] = true
-		self.lock.Unlock()
-
+		self.cradleLog.Attach(w2)
 		defer func() {
-			self.lock.Lock()
-			delete(self.cradleLogConsumers, w2)
-			self.lock.Unlock()
+			self.cradleLog.Detach(w2)
 		}()
 		<-ctx.Done()
 	}
@@ -221,15 +215,8 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 
 	if follow && ! self.stopped {
 
-		self.lock.Lock()
-		self.containers[index].consumers[w2] = true
-		self.lock.Unlock()
-
-		defer func() {
-			self.lock.Lock()
-			delete(self.containers[index].consumers, w2)
-			self.lock.Unlock()
-		}()
+		self.containers[index].log.Attach(w2)
+		defer self.containers[index].log.Detach(w2)
 		<-ctx.Done()
 	}
 	return
@@ -266,31 +253,29 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	self.lock.Lock()
-	self.containers[uint8(index)].consumers[w2] = true
-	self.lock.Unlock()
+	self.containers[index].log.Attach(w2)
 
 
 
 	go func() {
 		defer func() {
 			if self.config.Pod.Containers[index].Process.Tty {
-				self.lock.Lock()
-				delete(self.containers[uint8(index)].consumers, w2)
-				self.lock.Unlock()
+				self.containers[index].log.Detach(w2)
 				conn.Close()
 			}
 		}()
 
-		var buf [1024]byte
+		// TODO needs to hold back stdin until container is actually started
+
 		for {
+			var buf [1024]byte
 			n, err := conn.Read(buf[:])
 			if err != nil {
-				self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_CLOSE_STDIN)})
+				self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_CLOSE_STDIN)})
 				return
 			}
 
-			self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_STDIN), Value: buf[:n]})
+			self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_STDIN), Value: buf[:n]})
 		}
 	}()
 
@@ -320,7 +305,7 @@ func (self *Vmm) handleContainerResize(w http.ResponseWriter, r *http.Request, i
 		panic(err)
 	}
 
-	self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_WINCH), Value: j})
+	self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_WINCH), Value: j})
 
 	w.WriteHeader(200)
 	return
@@ -364,7 +349,7 @@ func (self *Vmm) handleContainerKill(w http.ResponseWriter, r *http.Request, ind
 		panic(err)
 	}
 
-	self.yc.Write(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_SIGNAL), Value: j})
+	self.ycWrite(yeet.Message{Key: spec.YKContainer(uint8(index), spec.YC_SUB_SIGNAL), Value: j})
 
 	w.WriteHeader(200)
 	return
@@ -502,7 +487,7 @@ func (self *Vmm) handleExecResize(w http.ResponseWriter, r *http.Request, index 
 		panic(err)
 	}
 
-	self.yc.Write(yeet.Message{Key: spec.YKExec(uint8(index), spec.YC_SUB_WINCH), Value: j})
+	self.ycWrite(yeet.Message{Key: spec.YKExec(uint8(index), spec.YC_SUB_WINCH), Value: j})
 
 	w.WriteHeader(200)
 	return
@@ -548,7 +533,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	if err != nil {
 		panic(err)
 	}
-	self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_EXEC), Value: js})
+	self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_EXEC), Value: js})
 
 	conn, rr, err := w.(http.Hijacker).Hijack()
 	if err != nil {
@@ -576,10 +561,10 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 		for {
 			n, err := reader.Read(buf[:])
 			if err != nil {
-				self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_CLOSE_STDIN)})
+				self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_CLOSE_STDIN)})
 				break
 			}
-			self.yc.Write(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_STDIN), Value: buf[:n]})
+			self.ycWrite(yeet.Message{Key: spec.YKExec(execn, spec.YC_SUB_STDIN), Value: buf[:n]})
 		}
 
 	}()
