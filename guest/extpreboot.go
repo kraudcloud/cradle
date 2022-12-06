@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"io"
+	"crypto/tls"
+	"time"
 )
 
 
@@ -20,7 +22,18 @@ func extpreboot() {
 
 					log.Infof("downloading cradle ext: %s", url)
 
-					resp, err := http.Get(url)
+
+					client := &http.Client{
+						Timeout: 10 * time.Second,
+						Transport: &http.Transport{
+							TLSClientConfig: &tls.Config{
+								InsecureSkipVerify: true,
+							},
+						},
+					}
+
+
+					resp, err := client.Get(url)
 					if err != nil {
 						log.Errorf("failed to download cradle exit: %s", err)
 						continue
@@ -31,7 +44,7 @@ func extpreboot() {
 					}
 					defer resp.Body.Close()
 
-					file, err := os.CreateTemp("", "xcradle")
+					file, err := os.CreateTemp("/run", "xcradle")
 					if err != nil {
 						log.Errorf("failed to create temp file: %s", err)
 						continue
@@ -52,10 +65,19 @@ func extpreboot() {
 						flatenv = append(flatenv, k+"="+v)
 					}
 
+
+					out := os.Stderr
+
+					console, err := os.OpenFile("/dev/kmsg", os.O_WRONLY, 0)
+					if err == nil {
+						defer console.Close()
+						out = console
+					}
+
 					cmd := exec.Command(file.Name())
 					cmd.Env = flatenv
-					cmd.Stdout = os.Stdout
-					cmd.Stderr = os.Stderr
+					cmd.Stdout = out
+					cmd.Stderr = out
 					err = cmd.Run()
 					if err != nil {
 						log.Errorf("failed to run xcradle: %s", err)

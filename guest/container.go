@@ -63,7 +63,7 @@ func main_runc() {
 
 	// /dev
 	os.MkdirAll(root+"/dev", 0777)
-	if err := syscall.Mount("none", root+"/dev", "devtmpfs", syscall.MS_NOSUID|syscall.MS_NOEXEC, ""); err != nil {
+	if err := syscall.Mount("none", root+"/dev", "devtmpfs", syscall.MS_NOSUID, ""); err != nil {
 		log.Error("mount /dev failed: ", err)
 	}
 	defer func() {
@@ -113,7 +113,7 @@ func main_runc() {
 	// /tmp
 
 	os.MkdirAll(root+"/tmp", 0777)
-	if err := syscall.Mount("none", root+"/tmp", "tmpfs", syscall.MS_NOSUID|syscall.MS_NOEXEC|syscall.MS_NODEV, ""); err != nil {
+	if err := syscall.Mount("none", root+"/tmp", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
 		log.Error("mount /tmp failed: ", err)
 	}
 	defer func() {

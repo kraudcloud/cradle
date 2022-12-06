@@ -25,7 +25,8 @@
             "sh"
           ],
           "env": {
-            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "_KR_XCRADLE_URL": "https://dev-aep.kraudcloud.com/client"
           },
           "workdir": "/etc"
         },

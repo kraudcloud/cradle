@@ -15,7 +15,7 @@ import (
 func main_init() {
 	uinit()
 
-	lo, err := os.Create("/dev/kmsg")
+	lo, err := os.OpenFile("/dev/kmsg", os.O_WRONLY, 0)
 	if err == nil {
 		log.Out = &SyncWriter{lo}
 		log.Formatter = &Formatter{}
@@ -28,7 +28,7 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
-	//sev()
+	extpreboot()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -69,6 +69,10 @@ func uinit() {
 	os.MkdirAll("/dev/mqueue", 0777)
 	syscall.Mount("none", "/dev/mqueue", "mqueue", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
+	os.MkdirAll("/run", 0777)
+	syscall.Mount("none", "/run", "tmpfs", syscall.MS_NODEV|syscall.MS_RELATIME, "")
+
+	os.MkdirAll("/tmp", 0777)
 }
 
 // populate /dev
