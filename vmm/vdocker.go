@@ -490,7 +490,7 @@ func (self *Vmm) handleExecResize(w http.ResponseWriter, r *http.Request, index 
 		panic(err)
 	}
 
-	self.ycWriteExec(r.Context(), index, spec.YC_SUB_WINCH, j)
+	self.ycWriteExecLocked(r.Context(), index, spec.YC_SUB_WINCH, j)
 
 	w.WriteHeader(200)
 	return
@@ -536,7 +536,7 @@ func (self *Vmm) handleExecStart(w http.ResponseWriter, r *http.Request, execn u
 	if err != nil {
 		panic(err)
 	}
-	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
+	self.ycWriteExecLocked(r.Context(), execn, spec.YC_SUB_EXEC, js)
 
 	conn, rr, err := w.(http.Hijacker).Hijack()
 	if err != nil {

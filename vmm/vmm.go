@@ -115,10 +115,14 @@ func (self *ContextWrapper) Value(key interface{}) interface{} {
 	return self.ctx.Value(key)
 }
 
-func  (self *Vmm) ycWriteExec(ctx context.Context,index uint8, subkey uint8, b []byte) {
+func  (self *Vmm) ycWriteExec(ctx context.Context, index uint8, subkey uint8, b []byte) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	self.ycWriteExecLocked(ctx, index, subkey, b)
+}
+
+func  (self *Vmm) ycWriteExecLocked(ctx context.Context, index uint8, subkey uint8, b []byte) {
 	if self.yc != nil {
 		self.yc.Write(yeet.Message{Key:  spec.YKExec(index, subkey), Value: b})
 	}
