@@ -70,8 +70,6 @@ func uinit() {
 	syscall.Mount("none", "/dev/mqueue", "mqueue", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC|syscall.MS_RELATIME, "")
 
 	os.MkdirAll("/run", 0777)
-	syscall.Mount("none", "/run", "tmpfs", syscall.MS_NODEV|syscall.MS_RELATIME, "")
-
 	os.MkdirAll("/tmp", 0777)
 }
 

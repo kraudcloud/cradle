@@ -1,4 +1,4 @@
-VARIANT=snp
+VARIANT=default
 
 all: vmm/vmm pkg.tar
 

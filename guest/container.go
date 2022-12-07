@@ -110,29 +110,12 @@ func main_runc() {
 		}
 	}()
 
-	// /tmp
-
+	// docker does not mount anything on /tmp or /run which some images abuse
 	os.MkdirAll(root+"/tmp", 0777)
-	if err := syscall.Mount("none", root+"/tmp", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
-		log.Error("mount /tmp failed: ", err)
-	}
-	defer func() {
-		if err := syscall.Unmount(root+"/tmp", 0); err != nil {
-			log.Error("unmount /tmp failed: ", err)
-		}
-	}()
-
-	// /run
+	os.Chmod(root+"/tmp", 0777)
 
 	os.MkdirAll(root+"/run", 0777)
-	if err := syscall.Mount("none", root+"/run", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
-		log.Error("mount /run failed: ", err)
-	}
-	defer func() {
-		if err := syscall.Unmount(root+"/run", 0); err != nil {
-			log.Error("unmount /run failed: ", err)
-		}
-	}()
+	os.Chmod(root+"/run", 0777)
 
 	os.Symlink("../run", root+"/var/run")
 	os.MkdirAll(root+"/run/lock", 0777)
