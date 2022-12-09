@@ -3,6 +3,7 @@
 package vmm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
@@ -10,9 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"context"
 )
-
 
 func (self *Vmm) handleListContainers(w http.ResponseWriter, r *http.Request) {
 	x := []map[string]interface{}{
@@ -28,10 +27,10 @@ func (self *Vmm) handleListContainers(w http.ResponseWriter, r *http.Request) {
 	for i, container := range self.config.Pod.Containers {
 
 		status := "Running"
-		state  := self.containers[uint8(i)].state.StateString()
+		state := self.containers[uint8(i)].state.StateString()
 
-		if	self.containers[uint8(i)].state.StateNum == spec.STATE_EXITED ||
-			self.containers[uint8(i)].state.StateNum == spec.STATE_DEAD{
+		if self.containers[uint8(i)].state.StateNum == spec.STATE_EXITED ||
+			self.containers[uint8(i)].state.StateNum == spec.STATE_DEAD {
 
 			status = fmt.Sprintf("Exit (%d) ", self.containers[uint8(i)].state.Code)
 
@@ -162,7 +161,7 @@ func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
-	if follow && ! self.stopped {
+	if follow && !self.stopped {
 		self.cradleLog.Attach(w2)
 		defer func() {
 			self.cradleLog.Detach(w2)
@@ -172,7 +171,7 @@ func (self *Vmm) handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type WriterCancelCloser struct{
+type WriterCancelCloser struct {
 	Writer io.Writer
 	cancel context.CancelFunc
 }
@@ -212,7 +211,7 @@ func (self *Vmm) handleContainerLogs(w http.ResponseWriter, r *http.Request, ind
 		flusher.Flush()
 	}
 
-	if follow && ! self.stopped {
+	if follow && !self.stopped {
 
 		self.containers[index].log.Attach(w2)
 		defer self.containers[index].log.Detach(w2)
@@ -254,13 +253,11 @@ func (self *Vmm) handleContainerAttach(w http.ResponseWriter, r *http.Request, i
 
 	self.containers[index].log.Attach(w2)
 
-
-
 	go func() {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		
+
 		defer func() {
 			if self.config.Pod.Containers[index].Process.Tty {
 				self.containers[index].log.Detach(w2)
@@ -433,6 +430,75 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 	}
 
 	w.WriteHeader(429)
+}
+
+func (self *Vmm) handleArchive(w http.ResponseWriter, r *http.Request, host bool, index uint8) {
+
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "tar"
+	}
+
+	var req = &Exec{
+		container:      index,
+		WorkingDir:     r.URL.Query().Get("path"),
+		Cmd:            []string{r.Method, format},
+		archiveCommand: true,
+		host:           host,
+	}
+
+	if r.Method == "GET" {
+		w.Header().Set("Content-Type", "application/x-tar")
+	}
+
+	conn, rr, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	self.lock.Lock()
+	var execn = uint8(0)
+	var found = false
+	for i := uint8(0); i < 255; i++ {
+		if self.execs[i] == nil {
+			self.execs[i] = req
+			execn = i
+			found = true
+			break
+		}
+	}
+	self.lock.Unlock()
+
+	if !found {
+		w.WriteHeader(429)
+		return
+	}
+
+	self.execs[execn].state.StateNum = spec.STATE_RUNNING
+
+	self.execs[execn].consumer = conn
+
+	js, err := json.Marshal(&spec.ControlMessageExec{
+		Container:  self.execs[execn].container,
+		Host:       self.execs[execn].host,
+		Cmd:        self.execs[execn].Cmd,
+		WorkingDir: self.execs[execn].WorkingDir,
+		ArchiveCmd: self.execs[execn].archiveCommand,
+	})
+	if err != nil {
+		panic(err)
+	}
+	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
+
+	var buf [1024]byte
+	for {
+		n, err := rr.Read(buf[:])
+		if err != nil {
+			return
+		}
+		self.ycWriteExec(r.Context(), execn, spec.YC_SUB_STDIN, buf[:n])
+	}
 
 }
 
@@ -697,6 +763,23 @@ func (self *Vmm) HttpHandler() http.HandlerFunc {
 			}
 
 			self.handleContainerKill(w, r, index)
+			return
+
+		} else if len(parts) == 4 && parts[1] == "containers" && parts[3] == "archive" {
+
+			if parts[2] == "cradle" || parts[2] == "host" {
+				self.handleArchive(w, r, true, 0)
+				return
+			}
+
+			index, err := self.findContainer(parts[2])
+			if err != nil {
+				w.WriteHeader(404)
+				writeError(w, err.Error())
+				return
+			}
+
+			self.handleArchive(w, r, false, index)
 			return
 
 		} else if len(parts) == 4 && parts[1] == "exec" && parts[3] == "start" {

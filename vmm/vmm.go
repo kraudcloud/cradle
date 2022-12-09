@@ -27,32 +27,32 @@ type Exec struct {
 	DetachKeys   string
 	Privileged   bool
 
-	container uint8
-	host      bool
-	state	  spec.ControlMessageState
+	archiveCommand bool
+	container      uint8
+	host           bool
+	state          spec.ControlMessageState
 
 	consumer io.WriteCloser
 }
 
-
 type Container struct {
-	ID			string
-	log         *Log
-	state		spec.ControlMessageState
+	ID    string
+	log   *Log
+	state spec.ControlMessageState
 
-	seenNotify	chan struct{}
-	seen		atomic.Bool
+	seenNotify chan struct{}
+	seen       atomic.Bool
 }
 
 type Vmm struct {
-	stopped          bool
-	lock             sync.Mutex
-	config           *spec.Launch
-	yc               *yeet.Sock
-	execs            map[uint8]*Exec
-	containers		 map[uint8]*Container
+	stopped    bool
+	lock       sync.Mutex
+	config     *spec.Launch
+	yc         *yeet.Sock
+	execs      map[uint8]*Exec
+	containers map[uint8]*Container
 
-	cradleLog		*Log
+	cradleLog *Log
 }
 
 func (self *Vmm) Write(p []byte) (n int, err error) {
@@ -77,17 +77,17 @@ func (self *Vmm) Shutdown(msg string) error {
 
 func New(config *spec.Launch) *Vmm {
 	self := &Vmm{
-		config: config,
-		execs:  make(map[uint8]*Exec),
+		config:     config,
+		execs:      make(map[uint8]*Exec),
 		containers: make(map[uint8]*Container),
-		cradleLog: NewLog(1024 * 1024),
+		cradleLog:  NewLog(1024 * 1024),
 	}
 
 	for i := 0; i < len(config.Pod.Containers); i++ {
 		self.containers[uint8(i)] = &Container{
-			ID:			config.Pod.Containers[i].ID,
-			log:		NewLog(1024 * 1024),
-			seenNotify:	make(chan struct{}),
+			ID:         config.Pod.Containers[i].ID,
+			log:        NewLog(1024 * 1024),
+			seenNotify: make(chan struct{}),
 		}
 	}
 
@@ -115,28 +115,28 @@ func (self *ContextWrapper) Value(key interface{}) interface{} {
 	return self.ctx.Value(key)
 }
 
-func  (self *Vmm) ycWriteExec(ctx context.Context, index uint8, subkey uint8, b []byte) {
+func (self *Vmm) ycWriteExec(ctx context.Context, index uint8, subkey uint8, b []byte) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	self.ycWriteExecLocked(ctx, index, subkey, b)
 }
 
-func  (self *Vmm) ycWriteExecLocked(ctx context.Context, index uint8, subkey uint8, b []byte) {
+func (self *Vmm) ycWriteExecLocked(ctx context.Context, index uint8, subkey uint8, b []byte) {
 	if self.yc != nil {
-		self.yc.Write(yeet.Message{Key:  spec.YKExec(index, subkey), Value: b})
+		self.yc.Write(yeet.Message{Key: spec.YKExec(index, subkey), Value: b})
 	}
 }
 
-func  (self *Vmm) ycWriteContainer(ctx context.Context, index uint8, subkey uint8, b []byte) {
+func (self *Vmm) ycWriteContainer(ctx context.Context, index uint8, subkey uint8, b []byte) {
 
 	select {
-		case <- ctx.Done():
-			return
-		case <- time.After(10 * time.Second):
-			fmt.Printf("ycWriteContainer timeout, index=%d, subkey=%d\n", index, subkey)
-			return;
-		case <-self.containers[index].seenNotify:
+	case <-ctx.Done():
+		return
+	case <-time.After(10 * time.Second):
+		fmt.Printf("ycWriteContainer timeout, index=%d, subkey=%d\n", index, subkey)
+		return
+	case <-self.containers[index].seenNotify:
 	}
 
 	self.lock.Lock()
@@ -159,7 +159,7 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to cradle: %s", err)
 	}
-	err = yeet.Sync(conn, 30 * time.Second)
+	err = yeet.Sync(conn, 30*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("sync failed: %s", err)
 	}
@@ -209,7 +209,7 @@ func (self *Vmm) ycread() error {
 		subkey := (m.Key - spec.YC_KEY_CONTAINER_START) & 0xff
 
 		if !self.containers[container].seen.Swap(true) {
-			close (self.containers[container].seenNotify)
+			close(self.containers[container].seenNotify)
 			self.containers[container].log.Write([]byte("[  o ~.~ o   ] entering container " + self.config.Pod.Containers[container].Name + " \r\n\r\n"))
 		}
 
@@ -223,7 +223,7 @@ func (self *Vmm) ycread() error {
 
 			json.Unmarshal(m.Value, &self.containers[container].state)
 
-			if	self.containers[container].state.StateNum == spec.STATE_EXITED ||
+			if self.containers[container].state.StateNum == spec.STATE_EXITED ||
 				self.containers[container].state.StateNum == spec.STATE_DEAD {
 
 				self.containers[container].log.Close()
@@ -267,7 +267,7 @@ func (self *Vmm) ycread() error {
 		} else if subkey == spec.YC_SUB_STATE {
 			json.Unmarshal(m.Value, &self.execs[execnr].state)
 
-			if  self.execs[execnr].state.StateNum == spec.STATE_EXITED ||
+			if self.execs[execnr].state.StateNum == spec.STATE_EXITED ||
 				self.execs[execnr].state.StateNum == spec.STATE_DEAD {
 
 				if self.execs[execnr].consumer != nil {

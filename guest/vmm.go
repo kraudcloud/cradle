@@ -175,6 +175,8 @@ func vmm1(connected chan bool) {
 					Env:        ctrlmsg.Env,
 					Tty:        ctrlmsg.Tty,
 					Host:       ctrlmsg.Host,
+					ArchiveCmd: ctrlmsg.ArchiveCmd,
+
 
 					containerIndex: ctrlmsg.Container,
 					execIndex:      execnr,

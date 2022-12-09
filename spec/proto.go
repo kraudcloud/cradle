@@ -44,6 +44,7 @@ type ControlMessageExec struct {
 	WorkingDir string   `json:"cwd"`
 	Env        []string `json:"env"`
 	Tty        bool     `json:"tty"`
+	ArchiveCmd bool     `json:"archivecmd,omitempty"`
 }
 
 const STATE_CREATED	= 0
