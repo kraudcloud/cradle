@@ -60,6 +60,12 @@ func StartExecLocked(e *Exec) (err error) {
 
 		log.Printf("archive command: %v", e.Cmd)
 
+		CONTAINERS_LOCK.Lock()
+		cid := CONTAINERS[e.containerIndex].Spec.ID
+		CONTAINERS_LOCK.Unlock()
+
+		e.WorkingDir = path.Join("/cache/containers", cid, "root", e.WorkingDir)
+
 		var stdout = &VmmWriter{
 			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
 			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
