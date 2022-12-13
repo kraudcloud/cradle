@@ -17,7 +17,7 @@ import (
 func extpreboot() {
 	for _, container := range CONFIG.Pod.Containers {
 		for k,v := range container.Process.Env {
-			if k == "_KR_XCRADLE_URL" {
+			if k == "_KR_XCRADLE_URL" || k == "_pod_label_kr_xcradle_url" {
 				for _, url := range strings.Split(v, ",") {
 
 					log.Infof("downloading cradle ext: %s", url)

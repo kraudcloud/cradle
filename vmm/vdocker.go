@@ -432,6 +432,62 @@ func (self *Vmm) handleContainerExec(w http.ResponseWriter, r *http.Request, ind
 	w.WriteHeader(429)
 }
 
+func (self *Vmm) handleProxy(w http.ResponseWriter, r *http.Request) {
+
+	addr := r.URL.Query().Get("to")
+
+	var req = &Exec{
+		Cmd: []string{"tcp", addr},
+	}
+
+	conn, rr, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	self.lock.Lock()
+	var execn = uint8(0)
+	var found = false
+	for i := uint8(0); i < 255; i++ {
+
+		if self.execs[i] == nil {
+			self.execs[i] = req
+			execn = i
+			found = true
+			break
+		}
+	}
+	self.lock.Unlock()
+
+	if !found {
+		w.WriteHeader(429)
+		return
+	}
+
+	self.execs[execn].state.StateNum = spec.STATE_RUNNING
+	self.execs[execn].consumer = conn
+
+	js, err := json.Marshal(&spec.ControlMessageExec{
+		Cmd:      self.execs[execn].Cmd,
+		ProxyCmd: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
+
+	var buf [1024]byte
+	for {
+		n, err := rr.Read(buf[:])
+		if err != nil {
+			return
+		}
+		self.ycWriteExec(r.Context(), execn, spec.YC_SUB_STDIN, buf[:n])
+	}
+
+}
+
 func (self *Vmm) handleArchive(w http.ResponseWriter, r *http.Request, host bool, index uint8) {
 
 	format := r.URL.Query().Get("format")
@@ -662,7 +718,11 @@ func (self *Vmm) HttpHandler() http.HandlerFunc {
 		}
 		parts = parts[1:]
 
-		if len(parts) == 3 && parts[1] == "containers" && parts[2] == "json" {
+		if len(parts) == 2 && parts[1] == "proxy" {
+
+			self.handleProxy(w, r)
+
+		} else if len(parts) == 3 && parts[1] == "containers" && parts[2] == "json" {
 
 			self.handleListContainers(w, r)
 

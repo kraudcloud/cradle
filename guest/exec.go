@@ -5,6 +5,7 @@ package main
 import (
 	"archive/tar"
 	"archive/zip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/kraudcloud/cradle/spec"
 	"golang.org/x/sys/unix"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -31,6 +33,7 @@ type Exec struct {
 	Tty        bool
 	Host       bool
 	ArchiveCmd bool
+	ProxyCmd   bool
 
 	containerIndex uint8
 	execIndex      uint8
@@ -56,7 +59,48 @@ func StartExecLocked(e *Exec) (err error) {
 
 	log.Printf("StartExecLocked: %v %v", e.ArchiveCmd, e)
 
-	if e.ArchiveCmd && e.Cmd[0] == "GET" {
+	if e.ProxyCmd {
+
+		var stdout = &VmmWriter{
+			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
+			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
+		}
+
+		go func() {
+			defer stdout.Close()
+
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+			defer cancel()
+
+			dialer := net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}
+
+			log.Printf("proxy command: %v", e.Cmd)
+			conn, err := dialer.DialContext(ctx, "tcp", e.Cmd[1])
+			if err != nil {
+				stdout.Write([]byte(fmt.Sprintf("HTTP/1.1 502 PROXY FAILED\r\n\r\n%v\r\n", err)))
+			} else {
+				stdout.Write([]byte("HTTP/1.1 101 UPGRADING\r\n\r\n"))
+				e.stdin = conn
+				io.Copy(stdout, conn)
+			}
+
+			js, _ := json.Marshal(&spec.ControlMessageState{
+				StateNum: spec.STATE_EXITED,
+				Code:     int32(0),
+			})
+			vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
+
+			EXECS_LOCK.Lock()
+			delete(EXECS, e.execIndex)
+			EXECS_LOCK.Unlock()
+		}()
+
+		return nil
+
+	} else if e.ArchiveCmd && e.Cmd[0] == "GET" {
 
 		log.Printf("archive command: %v", e.Cmd)
 
@@ -106,12 +150,11 @@ func StartExecLocked(e *Exec) (err error) {
 
 			jsb64 := base64.StdEncoding.EncodeToString(js)
 
-
 			stdout.Write([]byte("HTTP/1.1 200 OK\r\nConnection: Close\r\nX-Docker-Container-Path-Stat: "))
 			stdout.Write([]byte(jsb64))
 			stdout.Write([]byte("\r\n"))
 
-			if (e.Cmd[1] == "tar") {
+			if e.Cmd[1] == "tar" {
 				stdout.Write([]byte("Content-Type: application/x-tar\r\n"))
 				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + ".tar\"\r\n\r\n"))
 
@@ -125,7 +168,7 @@ func StartExecLocked(e *Exec) (err error) {
 				io.Copy(tw, f)
 				tw.Close()
 
-			} else if (e.Cmd[1] == "zip") {
+			} else if e.Cmd[1] == "zip" {
 				stdout.Write([]byte("Content-Type: application/zip\r\n\r\n"))
 				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + ".zip\"\r\n\r\n"))
 
@@ -134,7 +177,7 @@ func StartExecLocked(e *Exec) (err error) {
 				io.Copy(f2, f)
 				zipw.Close()
 
-			} else if (e.Cmd[1] == "none") {
+			} else if e.Cmd[1] == "none" {
 				stdout.Write([]byte("Content-Type: application/octet-stream\r\nContent-Length: " + strconv.FormatInt(stat.Size(), 10) + "\r\n"))
 				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + "\"\r\n\r\n"))
 

@@ -176,6 +176,7 @@ func vmm1(connected chan bool) {
 					Tty:        ctrlmsg.Tty,
 					Host:       ctrlmsg.Host,
 					ArchiveCmd: ctrlmsg.ArchiveCmd,
+					ProxyCmd:   ctrlmsg.ProxyCmd,
 
 
 					containerIndex: ctrlmsg.Container,

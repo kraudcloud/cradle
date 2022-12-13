@@ -45,6 +45,7 @@ type ControlMessageExec struct {
 	Env        []string `json:"env"`
 	Tty        bool     `json:"tty"`
 	ArchiveCmd bool     `json:"archivecmd,omitempty"`
+	ProxyCmd   bool     `json:"proxycmd,omitempty"`
 }
 
 const STATE_CREATED	= 0
