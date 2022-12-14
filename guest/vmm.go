@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/aep/yeet"
 	"github.com/kraudcloud/cradle/spec"
+	"net"
 	"sync"
 	"syscall"
 	"time"
@@ -92,7 +93,6 @@ func vmm1(connected chan bool) {
 				}
 			} else if subkey == spec.YC_SUB_SIGNAL {
 
-
 				var ctrlmsg spec.ControlMessageSignal
 				err := json.Unmarshal(m.Value, &ctrlmsg)
 				if err != nil {
@@ -127,6 +127,9 @@ func vmm1(connected chan bool) {
 				}
 			} else if subkey == spec.YC_SUB_CLOSE_STDIN {
 				if EXECS[execnr] != nil && EXECS[execnr].stdin != nil {
+					if tcp, ok := EXECS[execnr].stdin.(*net.TCPConn); ok {
+						tcp.CloseWrite()
+					}
 					EXECS[execnr].stdin.Close()
 				}
 			} else if subkey == spec.YC_SUB_SIGNAL {
@@ -178,7 +181,6 @@ func vmm1(connected chan bool) {
 					ArchiveCmd: ctrlmsg.ArchiveCmd,
 					ProxyCmd:   ctrlmsg.ProxyCmd,
 
-
 					containerIndex: ctrlmsg.Container,
 					execIndex:      execnr,
 				}
@@ -186,8 +188,8 @@ func vmm1(connected chan bool) {
 				if err != nil {
 					vmm(spec.YKExec(execnr, spec.YC_SUB_STDERR), []byte(err.Error()+"\n"))
 					js, _ := json.Marshal(&spec.ControlMessageState{
-						Code:  1,
-						Error: err.Error(),
+						Code:     1,
+						Error:    err.Error(),
 						StateNum: spec.STATE_EXITED,
 					})
 					vmm(spec.YKExec(execnr, spec.YC_SUB_STATE), js)
@@ -213,7 +215,7 @@ func vmminit() {
 
 	select {
 	case <-connected:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		exit(fmt.Errorf("vmm: timeout"))
 	}
 

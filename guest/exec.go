@@ -66,6 +66,8 @@ func StartExecLocked(e *Exec) (err error) {
 			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
 		}
 
+		EXECS[e.execIndex] = e
+
 		go func() {
 			defer stdout.Close()
 
@@ -77,11 +79,12 @@ func StartExecLocked(e *Exec) (err error) {
 				KeepAlive: 30 * time.Second,
 			}
 
-			log.Printf("proxy command: %v", e.Cmd)
+			log.Printf("proxy command: %d %v\n", e.execIndex, e.Cmd)
 			conn, err := dialer.DialContext(ctx, "tcp", e.Cmd[1])
 			if err != nil {
 				stdout.Write([]byte(fmt.Sprintf("HTTP/1.1 502 PROXY FAILED\r\n\r\n%v\r\n", err)))
 			} else {
+				defer conn.Close()
 				stdout.Write([]byte("HTTP/1.1 101 UPGRADING\r\n\r\n"))
 				e.stdin = conn
 				io.Copy(stdout, conn)
@@ -96,6 +99,8 @@ func StartExecLocked(e *Exec) (err error) {
 			EXECS_LOCK.Lock()
 			delete(EXECS, e.execIndex)
 			EXECS_LOCK.Unlock()
+
+			fmt.Println("PROXY ENDS")
 		}()
 
 		return nil
@@ -114,6 +119,8 @@ func StartExecLocked(e *Exec) (err error) {
 			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
 			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
 		}
+
+		EXECS[e.execIndex] = e
 
 		go func() {
 			defer stdout.Close()

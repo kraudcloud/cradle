@@ -450,7 +450,6 @@ func (self *Vmm) handleProxy(w http.ResponseWriter, r *http.Request) {
 	var execn = uint8(0)
 	var found = false
 	for i := uint8(0); i < 255; i++ {
-
 		if self.execs[i] == nil {
 			self.execs[i] = req
 			execn = i
@@ -476,6 +475,11 @@ func (self *Vmm) handleProxy(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
+
+
+	defer func() {
+		self.ycWriteExec(r.Context(), execn, spec.YC_SUB_CLOSE_STDIN, nil)
+	}()
 
 	var buf [1024]byte
 	for {
@@ -546,6 +550,10 @@ func (self *Vmm) handleArchive(w http.ResponseWriter, r *http.Request, host bool
 		panic(err)
 	}
 	self.ycWriteExec(r.Context(), execn, spec.YC_SUB_EXEC, js)
+
+	defer func() {
+		self.ycWriteExec(r.Context(), execn, spec.YC_SUB_CLOSE_STDIN, nil)
+	}()
 
 	var buf [1024]byte
 	for {
