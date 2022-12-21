@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"encoding/json"
 )
 
 func main_runc() {
@@ -176,7 +176,6 @@ func main_runc() {
 		container.Process.Env["HOME"] = "/root"
 	}
 
-
 	var flatenv = []string{}
 	for k, v := range container.Process.Env {
 		flatenv = append(flatenv, k+"="+v)
@@ -200,8 +199,6 @@ func main_runc() {
 		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
 		log.Error("PATH: ", container.Process.Env["PATH"])
 	}
-
-
 
 	if container.Process.Workdir == "" {
 		container.Process.Workdir = "/"
@@ -306,6 +303,19 @@ func (c *Container) prepare() error {
 		f.Close()
 	}
 
+	// create config mounts
+	// should those be bind mounts so its more obvious that they are not part of the image?
+	for _, mount := range c.Spec.ConfigMounts {
+		os.MkdirAll(fmt.Sprintf("%s/%s", root, filepath.Dir(mount.GuestPath)), 0755)
+		f, err = os.Create(fmt.Sprintf("%s/%s", root, mount.GuestPath))
+		if err != nil {
+			log.Error(fmt.Sprintf("create config mount file: %s", err))
+		} else {
+			f.Write(mount.Content)
+			f.Close()
+		}
+	}
+
 	return nil
 }
 
@@ -394,7 +404,6 @@ func (c *Container) run() error {
 		}()
 	}
 
-
 	js, _ := json.Marshal(spec.ControlMessageState{
 		StateNum: spec.STATE_RUNNING,
 	})
@@ -410,11 +419,10 @@ func (c *Container) run() error {
 
 	js, _ = json.Marshal(spec.ControlMessageState{
 		StateNum: spec.STATE_EXITED,
-		Code:    int32(state.ExitCode()),
-		Error:   state.String(),
+		Code:     int32(state.ExitCode()),
+		Error:    state.String(),
 	})
 	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
-
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

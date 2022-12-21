@@ -172,7 +172,7 @@ type ConfigMount struct {
 	Mode uint32 `json:"mode"`
 
 	// content
-	Content []byte
+	Content []byte `json:"content"`
 }
 
 type Network struct {
