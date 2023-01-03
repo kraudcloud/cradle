@@ -43,13 +43,18 @@ func network() {
 		log.Error("netlink.LinkSetUp: ", err)
 	}
 
+	//set mtu
+	err = netlink.LinkSetMTU(link, 1200)
+	if err != nil {
+		log.Error("netlink.LinkSetMTU: ", err)
+	}
+
 	// Set up the IPv4 address
 	addr, err := netlink.ParseAddr(CONFIG.Network.Ip4)
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
-			log.Error("netlink.AddrAdd: ", err)
-			return
+			log.Errorf("netlink.AddrAdd4 (%s): %s",  addr.String(), err)
 		}
 	}
 
@@ -58,8 +63,7 @@ func network() {
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
-			log.Error("netlink.AddrAdd: ", err)
-			return
+			log.Errorf("netlink.AddrAdd6 (%s): %s",  addr.String(), err)
 		}
 	}
 
@@ -77,7 +81,7 @@ func network() {
 
 		err = netlink.RouteAdd(&route)
 		if err != nil {
-			log.Error("netlink.RouteAdd: ", err)
+			log.Error("netlink.RouteAdd4: ", err)
 		}
 	}
 
@@ -95,7 +99,7 @@ func network() {
 
 		err = netlink.RouteAdd(&route)
 		if err != nil {
-			log.Error("netlink.RouteAdd: ", err)
+			log.Error("netlink.RouteAdd6: ", err)
 		}
 	}
 
