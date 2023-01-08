@@ -4,12 +4,12 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/kraudcloud/cradle/spec"
 	"os"
 	"strings"
 	"syscall"
 	"time"
-	"fmt"
 )
 
 func procmounts() []string {
@@ -56,13 +56,11 @@ func exit(err error) {
 	}
 
 	for _, m := range procmounts() {
-		if m == "/proc" || m == "/sys"  || m == "/dev" || m == "/dev/pts" || m == "/" {
+		if m == "/proc" || m == "/sys" || m == "/dev" || m == "/dev/pts" || m == "/" {
 			continue
 		}
 		log.Warnf("leftover mountpoint '%s' ", m)
 	}
-
-
 
 	log.Errorf("poweroff")
 

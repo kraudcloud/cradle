@@ -28,8 +28,6 @@ func network() {
 		log.Warn("lo.AddrAdd: ", err)
 	}
 
-
-
 	// eth0
 	link, err = netlink.LinkByName("eth0")
 	if err != nil {
@@ -54,7 +52,7 @@ func network() {
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
-			log.Errorf("netlink.AddrAdd4 (%s): %s",  addr.String(), err)
+			log.Errorf("netlink.AddrAdd4 (%s): %s", addr.String(), err)
 		}
 	}
 
@@ -63,7 +61,7 @@ func network() {
 	if err == nil {
 		err = netlink.AddrAdd(link, addr)
 		if err != nil {
-			log.Errorf("netlink.AddrAdd6 (%s): %s",  addr.String(), err)
+			log.Errorf("netlink.AddrAdd6 (%s): %s", addr.String(), err)
 		}
 	}
 

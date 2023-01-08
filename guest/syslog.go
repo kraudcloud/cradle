@@ -47,11 +47,16 @@ var log = &logrus.Logger{
 	Formatter: &logrus.TextFormatter{},
 }
 
-type SyncWriter struct {
-	Writer *os.File
+type KmsgWriter struct {
 }
 
-func (w *SyncWriter) Write(p []byte) (n int, err error) {
-	defer w.Writer.Sync()
-	return w.Writer.Write(p)
+func (w *KmsgWriter) Write(p []byte) (n int, err error) {
+	lo, err := os.OpenFile("/dev/kmsg", os.O_WRONLY, 0)
+	if err != nil {
+		return 0, err
+	}
+	lo.Write(p)
+	lo.Close()
+
+	return len(p), nil
 }

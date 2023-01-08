@@ -17,7 +17,8 @@ func main_init() {
 
 	lo, err := os.OpenFile("/dev/kmsg", os.O_WRONLY, 0)
 	if err == nil {
-		log.Out = &SyncWriter{lo}
+		lo.Close()
+		log.Out = &KmsgWriter{}
 		log.Formatter = &Formatter{}
 	}
 	log.Println("\033[1;34mKRAUDCLOUD CRADLE\033[0m")
@@ -133,19 +134,12 @@ func mountnvme() {
 		return
 	}
 
-	if err := mkfs("/dev/disk/by-serial/cache"); err != nil {
-		log.Errorf("mkfs.ext4: %v", err)
+	if err := mkfs("/dev/disk/by-serial/cache", "cache"); err != nil {
+		log.Errorf("mkfs.xfs : %v", err)
 	}
 
-	err := syscall.Mount("/dev/disk/by-serial/cache", "/cache", "ext4", syscall.MS_RELATIME, "")
+	err := syscall.Mount("/dev/disk/by-serial/cache", "/cache", "xfs", syscall.MS_RELATIME, "")
 	if err != nil {
 		log.Errorf("mount /dev/disk/by-serial/cache: %v", err)
 	}
-}
-
-func mkfs(path string) error {
-	cmd := exec.Command("/sbin/mkfs.ext4", "-q", "-F", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }

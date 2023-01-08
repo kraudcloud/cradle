@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot -gacc8bf8-dirty Configuration
+# Buildroot -g76b9487-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_9=y
@@ -823,7 +823,7 @@ BR2_PACKAGE_E2FSPROGS_RESIZE2FS=y
 # BR2_PACKAGE_SSHFS is not set
 # BR2_PACKAGE_UDFTOOLS is not set
 # BR2_PACKAGE_UNIONFS is not set
-# BR2_PACKAGE_XFSPROGS is not set
+BR2_PACKAGE_XFSPROGS=y
 # BR2_PACKAGE_ZEROFREE is not set
 
 #
@@ -2724,7 +2724,7 @@ BR2_PACKAGE_LIBSIGSEGV_ARCH_SUPPORTS=y
 BR2_PACKAGE_LIBUNWIND_ARCH_SUPPORTS=y
 # BR2_PACKAGE_LIBUNWIND is not set
 BR2_PACKAGE_LIBURCU_ARCH_SUPPORTS=y
-# BR2_PACKAGE_LIBURCU is not set
+BR2_PACKAGE_LIBURCU=y
 # BR2_PACKAGE_LIBURING is not set
 # BR2_PACKAGE_LIBUV is not set
 # BR2_PACKAGE_LIGHTNING is not set
@@ -2832,7 +2832,7 @@ BR2_PACKAGE_PROTOBUF_ARCH_SUPPORTS=y
 #
 # icu needs a toolchain w/ C++, wchar, threads, gcc >= 4.9, host gcc >= 4.9
 #
-# BR2_PACKAGE_INIH is not set
+BR2_PACKAGE_INIH=y
 # BR2_PACKAGE_LIBCLI is not set
 # BR2_PACKAGE_LIBEDIT is not set
 # BR2_PACKAGE_LIBENCA is not set

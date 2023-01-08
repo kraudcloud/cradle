@@ -46,7 +46,7 @@ build/linux:
 	cd build &&\
 	git clone https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git --single-branch --branch linux-6.0.y &&\
 	cd linux &&\
-	git checkout v6.0.7
+	git checkout v6.0.18
 
 pkg/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
@@ -88,6 +88,13 @@ build/initrd/init: .PHONY build/initrd/usr/sbin/cryptsetup
 	ln -sf ../init build/initrd/bin/runc
 	ln -sf ../init build/initrd/bin/nsenter
 
+
+
+build/xfsprogs:
+	mkdir -p build
+	cd build&&\
+	wget https://www.kernel.org/pub/linux/utils/fs/xfs/xfsprogs/xfsprogs-6.1.0.tar.xz &&\
+	tar -xzf xfsprogs-6.1.0.tar.xz
 
 build/e2fsprogs-1.46.5:
 	mkdir -p build

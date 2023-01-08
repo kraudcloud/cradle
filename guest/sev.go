@@ -1,17 +1,18 @@
+//go:build snp
 // +build snp
 
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/google/go-sev-guest/abi"
 	"github.com/google/go-sev-guest/client"
-	"os"
 	"net/http"
-	"bytes"
-	"crypto/sha256"
+	"os"
 )
 
 func sev() {
@@ -21,7 +22,6 @@ func sev() {
 		return
 	}
 	defer dev.Close()
-
 
 	var reportData [64]byte
 	var hasher = sha256.New()
@@ -44,11 +44,10 @@ func sev() {
 
 	json.NewEncoder(os.Stdout).Encode(p)
 
-
 	//post it to the url given in env
 	var url = ""
 	for _, container := range CONFIG.Pod.Containers {
-		for k,v := range container.Process.Env {
+		for k, v := range container.Process.Env {
 			if k == "KR_ATTESTATION_URL" {
 				url = v
 			}

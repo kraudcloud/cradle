@@ -5,11 +5,14 @@ package main
 import (
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
+	"golang.org/x/sys/unix"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func luksFormat(device string) {
@@ -24,6 +27,7 @@ func luksFormat(device string) {
 }
 
 func volumes() {
+
 	os.MkdirAll("/var/lib/docker/volumes/", 0755)
 
 	iter, err := ioutil.ReadDir("/dev/disk/volume/")
@@ -59,8 +63,6 @@ func volumes() {
 
 		os.Symlink("/dev/disk/volume/"+f.Name(), "/dev/disk/volume/"+ref.Name)
 
-		log.Printf("cradle: probing volume %s", uuid)
-
 		cmd := exec.Command("/sbin/blkid", "/dev/disk/volume/"+f.Name())
 		out, err := cmd.Output()
 		if err != nil {
@@ -73,8 +75,11 @@ func volumes() {
 		for _, s := range split {
 			if strings.HasPrefix(s, "TYPE=") {
 				blkid = strings.TrimSpace(strings.TrimPrefix(s, "TYPE="))
+				blkid = strings.Trim(blkid, "\"")
 			}
 		}
+
+		log.Printf("cradle: volume %s probed: %s", uuid, blkid)
 
 		if blkid == "" {
 			// double check that its empty, and we arent just failing elsewhere
@@ -95,7 +100,6 @@ func volumes() {
 				log.Warnf("volume: %s has unknown filesystem, refusing to touch it", uuid)
 				continue
 			}
-
 		}
 
 		// if its not mounted, dont touch it. user might do weird things
@@ -113,26 +117,48 @@ func volumes() {
 		}
 
 		if blkid == "" {
-			err = mkfs("/dev/disk/volume/" + f.Name())
+			log.Printf("cradle: formatting volume %s", uuid)
+			err = mkfs("/dev/disk/volume/"+f.Name(), "volume")
 			if err != nil {
-				log.Errorf("mkfs.ext4: %v", err)
+				log.Errorf("mkfs.xfs: %v", err)
 				continue
 			}
+			blkid = "xfs"
 		}
 
 		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name, 0755)
 
-		err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "ext4", 0, "")
-		if err != nil {
-			log.Errorf("mount: %v", err)
+		if blkid == "ext4" {
+			err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "ext4", 0, "")
+			if err != nil {
+				log.Errorf("mount: %v", err)
+				continue
+			}
+		} else if blkid == "xfs" {
+			err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "xfs", 0, "")
+			if err != nil {
+				log.Errorf("mount: %v", err)
+				continue
+			}
+		} else {
+			log.Warn("unknown filesystem '" + blkid + "'")
 			continue
 		}
+
 		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
-
-
 		// docker mounts volumes as uid 1000, and some containers rely on that. scary
 		os.Chown("/var/lib/docker/volumes/"+ref.Name+"/_data", 1000, 1000)
 
+		mountedTo := "/var/lib/docker/volumes/" + ref.Name + "/"
+		go func() {
+			// FIXME something is conceptually wrong here
+			// sometimes we loose a vm before it can flush, that's just the rough reality of hardware.
+			// i don't understand how this is ever supposed to work.
+			for {
+				time.Sleep(time.Second + (time.Duration(rand.Intn(500)) * time.Millisecond))
+				syncfs(mountedTo)
+			}
+		}()
 
 	}
 }
@@ -144,4 +170,26 @@ func allzero(s []byte) bool {
 		}
 	}
 	return true
+}
+
+func mkfs(path string, label string) error {
+	cmd := exec.Command("/sbin/mkfs.xfs", "-L", label, "-m", "bigtime=1", "-q", "-f", path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func syncfs(path string) {
+
+	f, err := os.Open(path)
+	if err != nil {
+		log.Errorf("syncfs: %v", err)
+		return
+	}
+	defer f.Close()
+
+	_, _, errno := unix.Syscall(unix.SYS_SYNCFS, uintptr(f.Fd()), 0, 0)
+	if errno != 0 {
+		log.Errorf("syncfs: %v", err)
+	}
 }
