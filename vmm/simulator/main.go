@@ -102,7 +102,7 @@ func qemuArgs(config *spec.Launch) []string {
 		"-cpu", "host",
 		"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
 		"-smp", "2",
-		"-m", "128M",
+		"-m", "1G",
 
 		"-chardev", "stdio,id=virtiocon0",
 		"-device", "virtio-serial-device",

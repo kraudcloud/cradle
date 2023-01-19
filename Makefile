@@ -1,4 +1,4 @@
-VARIANT=default
+VARIANT=snp
 
 all: vmm/vmm pkg.tar
 
@@ -50,7 +50,7 @@ build/linux:
 
 pkg/kernel: build/linux kernel-config-x86_64
 	cd build/linux &&\
-	cp ../../kernel-config-x86_64 .config &&\
+	cp ../../kernel-config-x86_64-$(VARIANT) .config &&\
 	make oldconfig &&\
 	make -j8
 	cp build/linux/arch/x86_64/boot/bzImage pkg/kernel

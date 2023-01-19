@@ -1,60 +1,158 @@
 {
-  "version": 2,
-  "id": "6115c213-a87a-4206-9b99-0d0235ac560f",
-  "pod": {
-    "name": "ravishing_morning",
-    "namespace": "default",
-    "containers": [
-      {
-        "id": "893aac2a-dcf2-431a-9ceb-626f0bfe218a",
-        "name": "ravishing_morning",
-        "hostname": "ravishing_morning",
-        "image": {
-          "id": "3d395be9-a9b1-4624-9f8d-a04605c51d3f",
-          "layers": [
-            {
-              "id": "4451b8f2-1d33-48ba-8403-aba9559bb6af",
-              "sha256": "e96e057aae67380a4ddb16c337c5c3669d97fdff69ec537f02aa2cc30d814281",
-              "digest": ""
-            }
-          ]
-        },
-        "process": {
-          "tty": true,
-          "cmd": [
-            "sh"
-          ],
-          "env": {
-            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "_KR_XCRADLE_URL": "https://dev-aep.kraudcloud.com/client"
-          },
-          "workdir": "/etc"
-        },
-        "lifecycle": {
-          "restart_on_success": true,
-          "restart_on_failure": true,
-          "restart_delay": 0,
-          "max_restarts": 2,
-          "critical": true
-        },
-        "block_volume_mounts": [{
-            "block_volume_name":  "files",
-            "guest_path":         "/data"
-        }]
-      }
-    ],
-    "block_volumes": [
+    "version": 2,
+    "id": "14c9ee5f-e5c1-472e-b983-d2a5d0d81955",
+    "pod": {
+      "name": "splendid_dew",
+      "namespace": "default",
+      "containers": [
         {
-            "id":     "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
-            "name":   "files",
-            "class":  "rbd"
+          "id": "8926b584-3873-4f97-885e-105b738e9046",
+          "name": "splendid_dew",
+          "hostname": "splendid_dew",
+          "image": {
+            "id": "7e5ab3b1-0343-4ca6-9a19-6aa6ff76dcda",
+            "layers": [
+              {
+                "id": "1c400fc5-2226-46c8-93ad-99c8088f8d29",
+                "sha256": "a603fa5e3b4127f210503aaa6189abf6286ee5a73deeaab460f8f33ebc6b64e2",
+                "digest": "sha256:ec4a38999118b78eab6899b913a548cb0b2c9b68fd05aff846a56b628b597f38"
+              },
+              {
+                "id": "23bdfbb2-bd5b-45db-baec-dae2da9a422a",
+                "sha256": "c428f1a494230852524a2a5957cc5199c36c8b403305e0e877d580bd0ec9e763",
+                "digest": "sha256:f6011769641091803058f3d7f21ae44fe06946be14914ff729844e7ef94ab15c"
+              },
+              {
+                "id": "cd2b93c8-c8d7-43e2-bc0b-74e79ce97ce1",
+                "sha256": "156740b07ef8a632f9f7bea4e57e4ee5541ade376adf9169351a1265382e39de",
+                "digest": "sha256:797a7c0590e0dd31ea2f40f5139ced40ad710a2db563718e77595c615ca0ae1a"
+              },
+              {
+                "aep": "has /usr/local/etc/php/.wh..wh..opq",
+                "id": "8d440f4b-7313-425e-8c41-bd13a90abd74",
+                "sha256": "fb5a4c8af82f00730b7427e47bda7f76cea2e2b9aea421750bc9025aface98d8",
+                "digest": "sha256:44148371c697ea6420ffeca0559033fbfe1a0e59e4b83edba4768342238b2782"
+              },
+              {
+                "aep": "has etc/apache2/mods-enabled but no mpm i think",
+                "id": "70b59776-bc01-41ab-83bc-e0e5e87307e1",
+                "sha256": "25f85b498fd5bfc6cce951513219fe480850daba71e6e997741e984d18483971",
+                "digest": "sha256:e5d40f64dcb4afff331a351f597ddf8427c170f2b95c6efac68b69c2e17ff1c0"
+              },
+              {
+                "aep":"has etc/apache2/mods-enabled/mpm_prefork.load adn etc/apache2/mods-enabled/.wh.mpm_event.load",
+                "id": "8c4d6bfb-a8f2-4f9d-a94c-d12ea2af09c4",
+                "sha256": "9b233e420ac7bbca645bb82c213029762acf1742400c076360dc303213c309d5",
+                "digest": "sha256:a538c5a6e4e0897e29c16838535953a92b3f409a4c8ca544cfd53d75158efc16"
+              },
+              {
+                "id": "73bf15e6-338d-4d1c-855d-62d59649ee3d",
+                "sha256": "fe42347c4ecfc90333acd9cad13912387eea39d13827a25cfa78727fa5d200e9",
+                "digest": "sha256:30fa0c430434808e60bf91062746236ef575c425be0272d1bf99d03f48dd30b7"
+              },
+              {
+                "id": "e6ebab7d-ee07-42b6-86be-5e2e3e5827e0",
+                "sha256": "546eb18c40c63cf7ab23f9812d8d96ab7b85a79a423fb953348787b234d4cbbd",
+                "digest": "sha256:aaf9f4c324bc2301f64fd5d301980504c3b3c0c5a9651c1e4d33f63668b7f9d8"
+              },
+              {
+                "id": "e334c1c0-7921-4e12-911b-cf3bf3eab5b4",
+                "sha256": "6f9832512fc31373964282941d541778192758efb24c10f41cdb40a75802f36f",
+                "digest": "sha256:1fa80f237c5384414c044db80f0dd00f5c0e1d39fd0eaef48b0c052c939a6409"
+              },
+              {
+                "id": "c84ee17b-3089-43f1-9e77-5964ecd21266",
+                "sha256": "b41b8e6bd463d8572766b5f5dc7962b74d8bd02e308f21b37c7591200c0723f0",
+                "digest": "sha256:13dd325eb75503ba2575e2a4d4cd5119f3a44caf4f5e17137ec378166aeb77a1"
+              },
+              {
+                "id": "3c146461-b762-4949-974e-1f907db4109d",
+                "sha256": "a9efb162a08fd96a21c5cb4f6a722b986e22e55aaed6e40026be0d1724510e55",
+                "digest": "sha256:dc5b566b3696ba4bbc736f2117bcc16df014d4b2b17a7c8607be062c08a55f03"
+              },
+              {
+                "id": "4b13d2f6-c7bf-4be7-8809-3840abe50079",
+                "sha256": "8c1c69b269028f8e56e39c7b25db28881f0faa3b214dc82a74769b05070677d8",
+                "digest": "sha256:0f7e0416f9dc51ae0396ee016a6d3f1207afcce1b6bfb1de94145943f400ae4d"
+              },
+              {
+                "id": "8e301db3-9577-44d5-9590-f15c3f9dddde",
+                "sha256": "0ff1edc4d072cdff50c31f427cffd4670da69f935a98b841115433037e9abfd0",
+                "digest": "sha256:55e64e0cef6481d757c4291a5724c671cb7ead5415cfd15af191a82f44b900fc"
+              },
+              {
+                "id": "49dcfe00-0932-4a77-9592-b006939a2a86",
+                "sha256": "76247fcd87ee97ffa9244b9dbad1ae28d303be5a3cccf3c3978ee2922e06fe02",
+                "digest": "sha256:0789bd8fb4cb014d892226feabaeebf85271af5e6659bd7bd2d0ec95366af28e"
+              },
+              {
+                "id": "07c665db-0a11-49f3-9e02-462515e9a109",
+                "sha256": "9820d9d14bfaf8254a135ace122659202e816ad8bbc089e4e2b033615c0919a8",
+                "digest": "sha256:fd788951ccf737a533582b10317cd03f3faa1ee2233375c20db7b90dda73eec2"
+              },
+              {
+                "id": "92495b4a-d79a-45ff-bb73-7926356128ce",
+                "sha256": "ef5fdd407ba616f68869c9fa55bcc707a8bc8c7d5f024ddd50114cc1264c6383",
+                "digest": "sha256:8c4d7ffd4007399ab9c09f9d3ee0dff002071faf8ea6f424b675c3338b4723a6"
+              },
+              {
+                "id": "feef7e3c-0e85-497b-af33-edc44c9742f4",
+                "sha256": "1af081fd7cab29b2da30eccc2e57eb2a06b29e31726fda3d6a78f21c94486e5e",
+                "digest": "sha256:5fb2edea257cafa0bd2cfa870eba5f621099f9787e9966a2cab96d6386037884"
+              },
+              {
+                "id": "f4c06cbd-971a-44cc-bbfc-60ec594ca12e",
+                "sha256": "da302cbbb406777a8c563b138f050ad6f0b190b5e7964369645367d95bd28d1c",
+                "digest": "sha256:ad25119d8954e6b3ec707cc3d071551e59f60e3267c6c875d4004ee828196bdc"
+              },
+              {
+                "id": "b070d201-b173-41a9-9f43-6785ca477a7b",
+                "sha256": "936f47078383708724917d627ba626be3cc2ad9ba108af06cfe31771a7826d4c",
+                "digest": "sha256:32afd7c2a42081230ca280471c5fc37f2b6635ee097b10055c0497c88e883ae9"
+              },
+              {
+                "id": "1f2741ed-1fe7-4e9e-9f13-37684ee3d1cf",
+                "sha256": "235245540698ba20f8e276125cad29c31776b046516b0da3dea2004122c0f88f",
+                "digest": "sha256:bca5a7c0d090d1d4718cdf85499be603aa3a263e1b3ccac8268231b906d0c61c"
+              }
+            ]
+          },
+          "process": {
+            "cmd": [
+              "/entrypoint.sh",
+              "apache2-foreground"
+            ],
+            "env": {
+              "APACHE_CONFDIR": "/etc/apache2",
+              "APACHE_ENVVARS": "/etc/apache2/envvars",
+              "GPG_KEYS": "528995BFEDFBA7191D46839EF9BA0ADA31CBD89E 39B641343D8C104B2B146DC3F9C39DC0B9698544 F1F692238FBC1666E5A5CCD4199F9DFEF6FFBAFD",
+              "NEXTCLOUD_VERSION": "25.0.1",
+              "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "PHPIZE_DEPS": "autoconf \t\tdpkg-dev \t\tfile \t\tg++ \t\tgcc \t\tlibc-dev \t\tmake \t\tpkg-config \t\tre2c",
+              "PHP_ASC_URL": "https://www.php.net/distributions/php-8.1.13.tar.xz.asc",
+              "PHP_CFLAGS": "-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64",
+              "PHP_CPPFLAGS": "-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64",
+              "PHP_INI_DIR": "/usr/local/etc/php",
+              "PHP_LDFLAGS": "-Wl,-O1 -pie",
+              "PHP_MEMORY_LIMIT": "512M",
+              "PHP_SHA256": "b15ef0ccdd6760825604b3c4e3e73558dcf87c75ef1d68ef4289d8fd261ac856",
+              "PHP_UPLOAD_LIMIT": "512M",
+              "PHP_URL": "https://www.php.net/distributions/php-8.1.13.tar.xz",
+              "PHP_VERSION": "8.1.13",
+              "_pod_annot_kr_deployment": "a71533138455",
+              "_pod_label_kr_deployment": "a71533138455"
+            },
+            "workdir": "/var/www/html",
+            "tty": true
+          },
+          "lifecycle": {
+            "restart_on_success": false,
+            "restart_on_failure": false,
+            "restart_delay": 0,
+            "max_restarts": 100,
+            "critical": false
+          }
         }
-    ]
-  },
-  "network" : {
-    "ip4" : "10.0.2.15/24",
-    "gateway4" : "10.0.2.2",
-    "nameservers" : [ "1.1.1.1"]
-  }
+      ]
+    }
 }
-
