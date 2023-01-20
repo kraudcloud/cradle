@@ -11,7 +11,10 @@ import (
 )
 
 func vdocker() {
-	log.Error(http.ListenAndServe(":1", vdockerHttpHandler()))
+	go func() {
+		err := http.ListenAndServe(":1", vdockerHttpHandler())
+		exit(err)
+	}()
 }
 
 func vdockerHttpHandler() http.HandlerFunc {

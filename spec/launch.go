@@ -184,4 +184,7 @@ type Network struct {
 
 	FabricIp6 string `json:"fip6,omitempty"`
 	FabricGw6 string `json:"fgw6,omitempty"`
+
+	TransitIp4 string `json:"tip4,omitempty"`
+	TransitGw4 string `json:"tgw4,omitempty"`
 }
