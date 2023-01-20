@@ -1,4 +1,4 @@
-VARIANT=snp
+VARIANT=default
 
 all: vmm/vmm pkg.tar
 
@@ -48,7 +48,7 @@ build/linux:
 	cd linux &&\
 	git checkout v6.0.18
 
-pkg/kernel: build/linux kernel-config-x86_64
+pkg/kernel: build/linux kernel-config-x86_64-$(VARIANT)
 	cd build/linux &&\
 	cp ../../kernel-config-x86_64-$(VARIANT) .config &&\
 	make oldconfig &&\

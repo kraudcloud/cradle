@@ -104,6 +104,62 @@ func network() {
 		}
 	}
 
+
+	// setup fabric if it exists
+	link, err = netlink.LinkByName("eth1")
+	if err == nil {
+
+		// set link up
+		err = netlink.LinkSetUp(link)
+		if err != nil {
+			log.Error("netlink.fabric.LinkSetUp: ", err)
+		}
+
+		// Set up the IPv6 address
+
+		addr := net.ParseIP(CONFIG.Network.FabricIp6)
+		if addr != nil {
+			err = netlink.AddrReplace(link, &netlink.Addr{
+				IPNet: &net.IPNet{
+					IP:   addr,
+					Mask: net.CIDRMask(128, 128),
+				},
+			})
+			if err != nil {
+				log.Errorf("netlink.fabric.AddrAdd6 (%s): %s", addr.String(), err)
+			}
+		}
+
+		gateway6 := net.ParseIP(CONFIG.Network.FabricGw6)
+		if gateway6 != nil {
+
+			err = netlink.RouteReplace(&netlink.Route{
+				LinkIndex: link.Attrs().Index,
+				Dst: &net.IPNet{
+					IP:   gateway6,
+					Mask: net.CIDRMask(128, 128),
+				},
+				Scope: netlink.SCOPE_LINK,
+			})
+			if err != nil {
+				log.Error("netlink.fabric.RouteAdd6: ", err)
+			}
+
+			route := netlink.Route{
+				LinkIndex: link.Attrs().Index,
+				Gw:        gateway6,
+			}
+
+			err = netlink.RouteAdd(&route)
+			if err != nil {
+				log.Error("netlink.fabric.RouteAdd6: ", err)
+			}
+		}
+	}
+
+
+
+
 	// set up nameservers
 	os.MkdirAll("/etc/", 0755)
 	f, err := os.OpenFile("/etc/resolv.conf", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)

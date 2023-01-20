@@ -29,6 +29,7 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
+	vdocker()
 	extpreboot()
 
 	var wg sync.WaitGroup

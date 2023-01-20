@@ -181,4 +181,7 @@ type Network struct {
 	Gateway4    string   `json:"gw4,omitempty"`
 	Gateway6    string   `json:"gw6,omitempty"`
 	Nameservers []string `json:"nameservers,omitempty"`
+
+	FabricIp6 string `json:"fip6,omitempty"`
+	FabricGw6 string `json:"fgw6,omitempty"`
 }
