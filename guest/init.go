@@ -29,6 +29,7 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
+	rebind46()
 	vdocker()
 	extpreboot()
 

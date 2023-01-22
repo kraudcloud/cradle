@@ -55,7 +55,7 @@ pkg/kernel: build/linux kernel-config-x86_64-$(VARIANT)
 	make -j8
 	cp build/linux/arch/x86_64/boot/bzImage pkg/kernel
 
-pkg/initrd: build/initrd/init build/initrd/usr/sbin/cryptsetup
+pkg/initrd: build/initrd/init build/initrd/usr/sbin/cryptsetup build/initrd/bin/rebind46
 	( cd build/initrd && find . | cpio -o -H newc ) > pkg/initrd
 
 test/config.tar: launch/launch.json
@@ -88,7 +88,10 @@ build/initrd/init: .PHONY build/initrd/usr/sbin/cryptsetup
 	ln -sf ../init build/initrd/bin/runc
 	ln -sf ../init build/initrd/bin/nsenter
 
-
+build/initrd/bin/rebind46: .PHONY
+	mkdir -p build/initrd/bin
+	cd rebind46 && make
+	cp rebind46/rebind46 build/initrd/bin/rebind46
 
 build/xfsprogs:
 	mkdir -p build
