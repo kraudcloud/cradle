@@ -26,7 +26,29 @@ func luksFormat(device string) {
 	}
 }
 
-func volumes() {
+func fileVolumes() {
+	os.MkdirAll("/var/lib/docker/volumes/", 0755)
+
+	for i, ref := range CONFIG.Pod.Volumes {
+
+		if ref.Transport != "9p" {
+			continue
+		}
+
+
+		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
+		err := syscall.Mount(
+			fmt.Sprintf("fs%d", i),
+			"/var/lib/docker/volumes/"+ref.Name+"/_data",
+			"9p", 0, "trans=virtio,version=9p2000.L,msize=104857600",
+		)
+		if err != nil {
+			log.Errorf("cradle vfs: %s: %v", ref.Name, err)
+		}
+	}
+}
+
+func blockVolumes() {
 
 	os.MkdirAll("/var/lib/docker/volumes/", 0755)
 
@@ -49,8 +71,8 @@ func volumes() {
 			continue
 		}
 
-		var ref spec.BlockVolume
-		for _, v := range CONFIG.Pod.BlockVolumes {
+		var ref spec.Volume
+		for _, v := range CONFIG.Pod.Volumes {
 			if v.ID == uuid {
 				ref = v
 				break
@@ -105,8 +127,8 @@ func volumes() {
 		// if its not mounted, dont touch it. user might do weird things
 		isMounted := false
 		for _, container := range CONFIG.Pod.Containers {
-			for _, m := range container.BlockVolumeMounts {
-				if m.BlockVolumeName == ref.Name {
+			for _, m := range container.VolumeMounts {
+				if m.VolumeName == ref.Name {
 					isMounted = true
 					break
 				}
@@ -159,7 +181,6 @@ func volumes() {
 				syncfs(mountedTo)
 			}
 		}()
-
 	}
 }
 

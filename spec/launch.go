@@ -25,14 +25,14 @@ type Pod struct {
 	Namespace string `json:"namespace"`
 
 	// block volumes provided by the hypervisor
-	BlockVolumes []BlockVolume `json:"block_volumes,omitempty"`
+	Volumes []Volume `json:"block_volumes,omitempty"`
 
 	// the containers inside the pod
 	Containers []Container `json:"containers,omitempty"`
 }
 
-// a block volume provided by the hypervisor
-type BlockVolume struct {
+// a volume provided by the hypervisor
+type Volume struct {
 
 	// uuid of block volume
 	ID string `json:"id"`
@@ -40,8 +40,11 @@ type BlockVolume struct {
 	// name referenced inside container
 	Name string `json:"name"`
 
-	// hypervisor mode
+	// storage class
 	Class string `json:"class"`
+
+	// hvm transport mode
+	Transport string `json:"transport"`
 }
 
 // the container spec
@@ -65,8 +68,8 @@ type Container struct {
 	// lifecycle of container
 	Lifecycle Lifecycle `json:"lifecycle"`
 
-	// mount block volumes
-	BlockVolumeMounts []BlockVolumeMount `json:"block_volume_mounts,omitempty"`
+	// mount volumes
+	VolumeMounts []VolumeMount `json:"block_volume_mounts,omitempty"`
 
 	// mount cradle host paths into container
 	BindMounts []BindMount `json:"bind_mounts,omitempty"`
@@ -132,10 +135,10 @@ type Lifecycle struct {
 	Critical bool `json:"critical"`
 }
 
-type BlockVolumeMount struct {
+type VolumeMount struct {
 
 	// name of block volume
-	BlockVolumeName string `json:"block_volume_name"`
+	VolumeName string `json:"block_volume_name"`
 
 	// path inside the volume
 	VolumePath string `json:"volume_path"`

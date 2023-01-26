@@ -34,13 +34,17 @@ func main_init() {
 	extpreboot()
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		unpackLayers()
 		wg.Done()
 	}()
 	go func() {
-		volumes()
+		blockVolumes()
+		wg.Done()
+	}()
+	go func() {
+		fileVolumes()
 		wg.Done()
 	}()
 	wg.Wait()

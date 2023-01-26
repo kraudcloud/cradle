@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
 	"github.com/kraudcloud/cradle/vmm"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"io"
 )
 
 func main() {
@@ -85,12 +85,11 @@ func main() {
 
 	defer func() {
 		fmt.Println("LINGER")
-		time.Sleep(60* time.Second)
+		time.Sleep(60 * time.Second)
 		cmd.Process.Kill()
 	}()
 
 	cmd.Process.Wait()
-
 
 }
 
@@ -149,18 +148,26 @@ func qemuArgs(config *spec.Launch) []string {
 		}
 	}
 
-	for _, volume := range config.Pod.BlockVolumes {
-		fileName := fmt.Sprintf("volume.%s.img", volume.ID)
-		r = append(r,
-			"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
-			"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
-		)
+	for i, volume := range config.Pod.Volumes {
+
+		switch volume.Class {
+		case "rbd":
+
+			fileName := fmt.Sprintf("volume.%s.img", volume.ID)
+			r = append(r,
+				"-drive", "format=raw,aio=threads,file="+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
+				"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
+			)
+		default:
+			fileName := fmt.Sprintf("volume.%s", volume.ID)
+			r = append(r,
+				"-fsdev", "local,id=fsdev-"+volume.ID+",path="+fileName+",security_model=mapped-xattr",
+				"-device", fmt.Sprintf("virtio-9p-device,fsdev=fsdev-%s,mount_tag=fs%d", volume.ID, i),
+			)
+		}
 	}
 
 	fmt.Println(r)
 
 	return r
 }
-
-
-
