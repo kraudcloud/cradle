@@ -21,7 +21,7 @@ func extpreboot() {
 					log.Infof("downloading cradle ext: %s", url)
 
 					client := &http.Client{
-						Timeout: 10 * time.Second,
+						Timeout: 5 * time.Minute,
 						Transport: &http.Transport{
 							TLSClientConfig: &tls.Config{
 								InsecureSkipVerify: true,
