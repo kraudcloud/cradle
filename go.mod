@@ -3,7 +3,6 @@ module github.com/kraudcloud/cradle
 go 1.19
 
 require (
-	github.com/aep/yeet v0.0.0-20221113182101-f6c5bc3dbe07
 	github.com/creack/pty v1.1.18
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-sev-guest v0.3.0
