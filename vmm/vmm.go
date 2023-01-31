@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
-	"github.com/kraudcloud/cradle/yeet"
+	"github.com/kraudcloud/cradle/badyeet"
 	"io"
 	"net"
 	"net/http"
@@ -48,7 +48,7 @@ type Vmm struct {
 	stopped    bool
 	lock       sync.Mutex
 	config     *spec.Launch
-	yc         *yeet.Sock
+	yc         *badyeet.Sock
 	execs      map[uint8]*Exec
 	containers map[uint8]*Container
 
@@ -70,7 +70,7 @@ func (self *Vmm) Shutdown(msg string) error {
 	defer self.lock.Unlock()
 
 	if self.yc != nil {
-		self.yc.Write(yeet.Message{Key: spec.YC_KEY_SHUTDOWN, Value: []byte(msg)})
+		self.yc.Write(badyeet.Message{Key: spec.YC_KEY_SHUTDOWN, Value: []byte(msg)})
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ func (self *Vmm) ycWriteExec(ctx context.Context, index uint8, subkey uint8, b [
 
 func (self *Vmm) ycWriteExecLocked(ctx context.Context, index uint8, subkey uint8, b []byte) {
 	if self.yc != nil {
-		self.yc.Write(yeet.Message{Key: spec.YKExec(index, subkey), Value: b})
+		self.yc.Write(badyeet.Message{Key: spec.YKExec(index, subkey), Value: b})
 	}
 }
 
@@ -142,7 +142,7 @@ func (self *Vmm) ycWriteContainer(ctx context.Context, index uint8, subkey uint8
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.yc.Write(yeet.Message{Key: spec.YKContainer(index, subkey), Value: b})
+	self.yc.Write(badyeet.Message{Key: spec.YKContainer(index, subkey), Value: b})
 }
 
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
@@ -159,14 +159,14 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to cradle: %s", err)
 	}
-	err = yeet.Sync(conn, 30*time.Second)
+	err = badyeet.Sync(conn, 30*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("sync failed: %s", err)
 	}
-	self.yc, err = yeet.Connect(conn,
-		yeet.Hello("libvmm,1"),
-		yeet.Keepalive(500*time.Millisecond),
-		yeet.HandshakeTimeout(10*time.Second),
+	self.yc, err = badyeet.Connect(conn,
+		badyeet.Hello("libvmm,1"),
+		badyeet.Keepalive(500*time.Millisecond),
+		badyeet.HandshakeTimeout(10*time.Second),
 	)
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func (self *Vmm) ycread() error {
 						js, _ := json.Marshal(&spec.ControlMessageSignal{
 							Signal: 9,
 						})
-						self.yc.Write(yeet.Message{Key: spec.YKExec(execnr, spec.YC_SUB_SIGNAL), Value: js})
+						self.yc.Write(badyeet.Message{Key: spec.YKExec(execnr, spec.YC_SUB_SIGNAL), Value: js})
 					}
 					if f, ok := w.(http.Flusher); ok {
 						f.Flush()

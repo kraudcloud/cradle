@@ -13,6 +13,8 @@ type Launch struct {
 	Pod *Pod `json:"pod,omitempty"`
 
 	Network *Network `json:"network,omitempty"`
+
+	Role *Role `json:"role,omitempty"`
 }
 
 // pod to be launched in cradle
@@ -190,4 +192,9 @@ type Network struct {
 
 	TransitIp4 string `json:"tip4,omitempty"`
 	TransitGw4 string `json:"tgw4,omitempty"`
+}
+
+type Role struct {
+	Api []string `json:"api,omitempty"`
+	Token string `json:"token,omitempty"`
 }

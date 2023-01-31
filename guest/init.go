@@ -26,6 +26,7 @@ func main_init() {
 	wdinit()
 	makedev()
 	vmminit()
+	go vmm3()
 	mountnvme()
 	config()
 	network()

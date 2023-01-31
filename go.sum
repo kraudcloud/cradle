@@ -1,3 +1,5 @@
+github.com/aep/yeet v0.0.0-20230131123822-02f4d4f632a4 h1:mkNLbAIP3jlBAbs/m1jbj4ULRuibj5OHFr5bUu4cY8U=
+github.com/aep/yeet v0.0.0-20230131123822-02f4d4f632a4/go.mod h1:5RNeSm2swIV7jEyEfUoPpRuqz8qmz33KblC3l7CzY/w=
 github.com/creack/goselect v0.1.2 h1:2DNy14+JPjRBgPzAd1thbQp4BSIihxcBf0IXhQXDRa0=
 github.com/creack/goselect v0.1.2/go.mod h1:a/NhLweNvqIYMuxcMOuWY516Cimucms3DglDzQP3hKY=
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=

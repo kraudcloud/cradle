@@ -1,4 +1,4 @@
-package yeet
+package badyeet
 
 import (
 	"sync"

@@ -6,20 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
-	"github.com/kraudcloud/cradle/yeet"
+	"github.com/kraudcloud/cradle/badyeet"
 	"net"
 	"sync"
 	"syscall"
 	"time"
 )
 
-var YC *yeet.Sock
+var YC *badyeet.Sock
 var YCWLOCK sync.Mutex
 
 func vmm(key uint32, msg []byte) {
 	YCWLOCK.Lock()
 	defer YCWLOCK.Unlock()
-	YC.Write(yeet.Message{Key: key, Value: msg})
+	YC.Write(badyeet.Message{Key: key, Value: msg})
 }
 
 func vmm1(connected chan bool) {
@@ -33,17 +33,17 @@ func vmm1(connected chan bool) {
 		}
 	}
 
-	err = yeet.Sync(sock, time.Second)
+	err = badyeet.Sync(sock, time.Second)
 	if err != nil {
 		sock.Close()
 		log.Errorf("vmm: %v", err)
 		return
 	}
 
-	yc, err := yeet.Connect(sock,
-		yeet.Hello("cradle"),
-		yeet.Keepalive(500*time.Millisecond),
-		yeet.HandshakeTimeout(10*time.Second),
+	yc, err := badyeet.Connect(sock,
+		badyeet.Hello("cradle"),
+		badyeet.Keepalive(500*time.Millisecond),
+		badyeet.HandshakeTimeout(10*time.Second),
 	)
 	if err != nil {
 		sock.Close()
@@ -63,7 +63,7 @@ func vmm1(connected chan bool) {
 	default:
 	}
 
-	YC.Write(yeet.Message{Key: spec.YC_KEY_STARTUP, Value: []byte("hello")})
+	YC.Write(badyeet.Message{Key: spec.YC_KEY_STARTUP, Value: []byte("hello")})
 
 	for {
 		m, err := yc.Read()
