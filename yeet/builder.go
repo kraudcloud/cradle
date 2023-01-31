@@ -18,6 +18,7 @@ type Builder struct {
 	ConnectTimeout time.Duration
 	Log            Logger
 	KeepAlive      time.Duration
+	Headers		   map[string]string
 }
 
 func New() *Builder {
@@ -25,6 +26,7 @@ func New() *Builder {
 		Context:        context.Background(),
 		ConnectTimeout: 20 * time.Second,
 		KeepAlive:      3 * time.Second,
+		Headers:        map[string]string{},
 	}
 }
 
@@ -48,12 +50,16 @@ func (b *Builder) WithKeepAlive(keepAlive time.Duration) *Builder {
 	return b
 }
 
+func (b *Builder) WithHeader(k, v string) *Builder {
+	b.Headers[k] = v
+	return b
+}
+
 func (b *Builder) Connect(uri ...string) (net.Conn, error) {
 
 
 	urls := []*url.URL{}
 
-	
 	for _, uri := range uri {
 		u, err := url.Parse(uri)
 		if err != nil {

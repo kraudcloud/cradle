@@ -28,7 +28,6 @@ func network() {
 		log.Warn("lo.AddrAdd: ", err)
 	}
 
-
 	// eth0: fabric
 
 	eth0, err := netlink.LinkByName("eth0")
@@ -133,20 +132,6 @@ func network() {
 		log.Error("netlink.fabric.RouteAdd4: ", err)
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// eth1: legacy vpc
 
 	eth1, err := netlink.LinkByName("eth1")
@@ -179,9 +164,7 @@ func network() {
 		}
 	}
 
-
-
-	_, v4vpcnet , _ := net.ParseCIDR("10.0.0.0/8")
+	_, v4vpcnet, _ := net.ParseCIDR("10.0.0.0/8")
 
 	// Set up gateway4
 	gateway4 = net.ParseIP(CONFIG.Network.Gateway4)
@@ -189,7 +172,7 @@ func network() {
 		route := netlink.Route{
 			LinkIndex: eth1.Attrs().Index,
 			Gw:        gateway4,
-			Dst: 	 v4vpcnet,
+			Dst:       v4vpcnet,
 		}
 
 		err = netlink.RouteAdd(&route)
@@ -198,17 +181,14 @@ func network() {
 		}
 	}
 
-
-
-
-
-
-
 	// set up nameservers
 	os.MkdirAll("/etc/", 0755)
 	f, err := os.OpenFile("/etc/resolv.conf", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	defer f.Close()
-	for _, nameserver := range CONFIG.Network.Nameservers {
-		f.WriteString("nameserver " + nameserver + "\n")
-	}
+
+	f.WriteString("nameserver 127.127.127.127\n")
+
+	// for _, nameserver := range CONFIG.Network.Nameservers {
+	// 	f.WriteString("nameserver " + nameserver + "\n")
+	// }
 }

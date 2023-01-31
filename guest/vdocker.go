@@ -1,13 +1,13 @@
 package main
 
 import (
-	"net/http"
-	"strings"
 	"encoding/json"
-	"io"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func vdocker() {
@@ -66,16 +66,13 @@ func vdockerHttpHandler() http.HandlerFunc {
 
 			handleContainerInspect(w, r, index)
 
-
 		} else {
-
 
 			w.WriteHeader(404)
 		}
 		return
 	}
 }
-
 
 func handleListContainers(w http.ResponseWriter, r *http.Request) {
 	x := []map[string]interface{}{
@@ -173,7 +170,6 @@ func handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	f, err := os.OpenFile("/dev/kmsg", os.O_RDONLY, 0)
 	if err != nil {
 		log.Printf("error opening /dev/kmsg: %s\n", err)
@@ -205,4 +201,3 @@ func findContainer(id string) (uint8, error) {
 	}
 	return 0, fmt.Errorf("no such container")
 }
-

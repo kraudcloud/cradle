@@ -139,7 +139,7 @@ func untar(fo io.Reader, prefix string) {
 				if flattenOverlay {
 					wh[path.Join(dir, name[len(whiteoutPrefix):])] = true
 				} else {
-					syscall.Mknod(path.Join(dir,  name[len(whiteoutPrefix):]), syscall.S_IFCHR, 0)
+					syscall.Mknod(path.Join(dir, name[len(whiteoutPrefix):]), syscall.S_IFCHR, 0)
 				}
 			}
 

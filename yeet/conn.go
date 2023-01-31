@@ -23,6 +23,7 @@ type Conn struct {
 	lock   sync.Mutex
 	dialer *net.Dialer
 	urls   []*url.URL
+	headers map[string]string
 	log    Logger
 
 	keepAlive     time.Duration
@@ -47,6 +48,7 @@ func fromBuilder(b *Builder, urls []*url.URL, ssock net.Conn) (*Conn, error) {
 		log:       b.Log,
 		keepAlive: b.KeepAlive,
 		sock:      ssock,
+		headers:   b.Headers,
 	}
 
 	if c.log == nil {
@@ -305,9 +307,14 @@ func (c *Conn) connect1() (net.Conn, error) {
 			"Connection: Upgrade\r\n" +
 			"Upgrade: yeeet\r\n" +
 			"Sec-WebSocket-Key: eW9sbw==\r\n" +
-			"Sec-WebSocket-Version: 13\r\n" +
-			"\r\n",
+			"Sec-WebSocket-Version: 13\r\n",
 	))
+
+	for k, v := range c.headers {
+		ci.Write([]byte(k + ": " + v + "\r\n"))
+	}
+
+	ci.Write([]byte("\r\n"))
 
 	var headers bytes.Buffer
 	var state int

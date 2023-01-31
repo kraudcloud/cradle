@@ -35,7 +35,6 @@ func fileVolumes() {
 			continue
 		}
 
-
 		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
 		err := syscall.Mount(
 			fmt.Sprintf("fs%d", i),

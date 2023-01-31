@@ -1,11 +1,9 @@
 package main
 
-
 import (
-	"os/exec"
 	"os"
+	"os/exec"
 )
-
 
 func rebind46() {
 
