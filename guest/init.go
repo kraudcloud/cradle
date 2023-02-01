@@ -29,6 +29,7 @@ func main_init() {
 	mountnvme()
 	config()
 	network()
+	services()
 	startDns()
 	go vmm3()
 	rebind46()

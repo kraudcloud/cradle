@@ -139,3 +139,10 @@ build/initrd/usr/sbin/cryptsetup: build/buildroot-2022.08.1 buildroot-config-x86
 
 .PHONY:
 
+
+upload: all
+	cd pkg &&\
+	docker build . -t cradle:$$(git describe --tags --always)-$(VARIANT) &&\
+	docker save cradle:$$(git describe --tags --always)-$(VARIANT) | docker --context=kraud.aep load
+
+

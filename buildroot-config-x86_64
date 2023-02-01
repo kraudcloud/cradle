@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot -g76b9487-dirty Configuration
+# Buildroot -gf01ded9-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_9=y
@@ -2296,7 +2296,8 @@ BR2_PACKAGE_LIBOPENH264_ARCH_SUPPORTS=y
 #
 # BR2_PACKAGE_LIBMICROHTTPD is not set
 # BR2_PACKAGE_LIBMINIUPNPC is not set
-# BR2_PACKAGE_LIBMNL is not set
+BR2_PACKAGE_LIBMNL=y
+# BR2_PACKAGE_LIBMNL_EXAMPLES is not set
 # BR2_PACKAGE_LIBMODBUS is not set
 
 #
@@ -2313,7 +2314,7 @@ BR2_PACKAGE_LIBOPENH264_ARCH_SUPPORTS=y
 # BR2_PACKAGE_LIBNETFILTER_LOG is not set
 # BR2_PACKAGE_LIBNETFILTER_QUEUE is not set
 # BR2_PACKAGE_LIBNFNETLINK is not set
-# BR2_PACKAGE_LIBNFTNL is not set
+BR2_PACKAGE_LIBNFTNL=y
 # BR2_PACKAGE_LIBNICE is not set
 # BR2_PACKAGE_LIBNIDS is not set
 # BR2_PACKAGE_LIBNL is not set
@@ -3097,7 +3098,7 @@ BR2_PACKAGE_HAPROXY_ARCH_SUPPORTS=y
 # iperf needs a toolchain w/ C++
 #
 # BR2_PACKAGE_IPERF3 is not set
-# BR2_PACKAGE_IPROUTE2 is not set
+BR2_PACKAGE_IPROUTE2=y
 # BR2_PACKAGE_IPSET is not set
 # BR2_PACKAGE_IPTABLES is not set
 # BR2_PACKAGE_IPTRAF_NG is not set
@@ -3174,7 +3175,7 @@ BR2_PACKAGE_HAPROXY_ARCH_SUPPORTS=y
 # NetworkManager needs udev /dev management and a glibc toolchain w/ headers >= 4.6, dynamic library, wchar, threads, gcc >= 4.9
 #
 # BR2_PACKAGE_NFACCT is not set
-# BR2_PACKAGE_NFTABLES is not set
+BR2_PACKAGE_NFTABLES=y
 # BR2_PACKAGE_NGINX is not set
 # BR2_PACKAGE_NGIRCD is not set
 # BR2_PACKAGE_NGREP is not set

@@ -30,11 +30,9 @@ type Dns struct {
 
 	lookup map[string]*dnsrr
 
-
-	firstViewHasArrived atomic.Bool
-	firstViewArrival context.Context
+	firstViewHasArrived  atomic.Bool
+	firstViewArrival     context.Context
 	firstViewArrivalDone func()
-
 }
 
 var DNS *Dns
@@ -42,9 +40,6 @@ var DNS *Dns
 func UpdateDNS(vv *Vpc) {
 
 	//TODO could be better optimized to not waste memory on every update
-
-
-
 
 	DNS.lock.Lock()
 
@@ -137,20 +132,21 @@ func startDns() {
 	firstViewArrival, firstViewArrivalDone := context.WithCancel(context.Background())
 
 	DNS = &Dns{
-		listener: l,
-		lookup:   make(map[string]*dnsrr),
-		firstViewArrival: firstViewArrival,
+		listener:             l,
+		lookup:               make(map[string]*dnsrr),
+		firstViewArrival:     firstViewArrival,
 		firstViewArrivalDone: firstViewArrivalDone,
 	}
 
 	handler := dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
 
+		log.Printf("DNS : %s", r.Question[0].Name)
 
 		// delay the first request until we have a coherent vpc view
 		if !DNS.firstViewHasArrived.Load() {
+			log.Printf("DNS : waiting for first view")
 			<-DNS.firstViewArrival.Done()
 		}
-
 
 		if len(r.Question) == 1 && r.Question[0].Qtype == dns.TypeTXT {
 

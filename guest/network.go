@@ -4,6 +4,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"net"
 	"os"
+	"os/exec"
 )
 
 func network() {
@@ -25,7 +26,31 @@ func network() {
 	}
 	err = netlink.AddrAdd(lo, &netlink.Addr{IPNet: &net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.CIDRMask(8, 32)}})
 	if err != nil {
-		log.Warn("lo.AddrAdd: ", err)
+		//log.Warn("lo.AddrAdd: ", err)
+	}
+
+	// srv
+
+	//FIXME this doesnt do the right thing
+	// err = netlink.RouteReplace(&netlink.Route{
+	// 	LinkIndex: lo.Attrs().Index,
+	// 	Dst: &net.IPNet{
+	// 		IP:   []byte{0xfd, 0xcc, 0xc1, 0x0d,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0},
+	// 		Mask: net.CIDRMask(32, 128),
+	// 	},
+	// 	Scope: netlink.SCOPE_LINK,
+	// 	Table: 255, // local. why does this not work?
+	// })
+	// if err != nil {
+	// 	log.Error("netlink.srv.RouteAdd6: ", err)
+	// }
+
+	cmd := exec.Command("/sbin/ip", "-6", "route", "add", "local", "fdcc:c10d::/32", "dev", "lo")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		log.Error("ip.srv.RouteAdd6: ", err)
 	}
 
 	// eth0: fabric

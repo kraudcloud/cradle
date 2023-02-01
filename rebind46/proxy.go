@@ -12,12 +12,18 @@ func proxy(v4port uint16) {
 
 	log.Printf("[port %d]: rebinding v4 port to v6", v4port)
 
-	l, err := net.Listen("tcp6", fmt.Sprintf(":%d", v4port))
+	l, err := net.ListenTCP("tcp6", &net.TCPAddr{
+		IP: net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Port: int(v4port),
+	})
+
 	if err != nil {
 		log.Printf("[port %d]: listen: %s\n", v4port, err.Error())
 		return
 	}
 	defer l.Close()
+
+	log.Printf("[port %d]: listening on %s", v4port, l.Addr().String())
 
 	for {
 		v6, err := l.Accept()
