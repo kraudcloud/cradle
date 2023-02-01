@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,6 +29,12 @@ type Dns struct {
 	server   *dns.Server
 
 	lookup map[string]*dnsrr
+
+
+	firstViewHasArrived atomic.Bool
+	firstViewArrival context.Context
+	firstViewArrivalDone func()
+
 }
 
 var DNS *Dns
@@ -35,6 +42,9 @@ var DNS *Dns
 func UpdateDNS(vv *Vpc) {
 
 	//TODO could be better optimized to not waste memory on every update
+
+
+
 
 	DNS.lock.Lock()
 
@@ -89,6 +99,11 @@ func UpdateDNS(vv *Vpc) {
 	}
 
 	DNS.lock.Unlock()
+
+	if !DNS.firstViewHasArrived.Load() {
+		DNS.firstViewHasArrived.Store(true)
+		DNS.firstViewArrivalDone()
+	}
 }
 
 func (DNS *Dns) ResolveAAAA(name string) []net.IP {
@@ -119,12 +134,23 @@ func startDns() {
 		return
 	}
 
+	firstViewArrival, firstViewArrivalDone := context.WithCancel(context.Background())
+
 	DNS = &Dns{
 		listener: l,
 		lookup:   make(map[string]*dnsrr),
+		firstViewArrival: firstViewArrival,
+		firstViewArrivalDone: firstViewArrivalDone,
 	}
 
 	handler := dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+
+
+		// delay the first request until we have a coherent vpc view
+		if !DNS.firstViewHasArrived.Load() {
+			<-DNS.firstViewArrival.Done()
+		}
+
 
 		if len(r.Question) == 1 && r.Question[0].Qtype == dns.TypeTXT {
 
@@ -145,7 +171,7 @@ func startDns() {
 								Name:   k,
 								Rrtype: dns.TypeAAAA,
 								Class:  dns.ClassINET,
-								Ttl:    60,
+								Ttl:    1,
 							},
 							AAAA: rr.SrvV6[0],
 						})
@@ -156,7 +182,7 @@ func startDns() {
 								Name:   k,
 								Rrtype: dns.TypeAAAA,
 								Class:  dns.ClassINET,
-								Ttl:    60,
+								Ttl:    1,
 							},
 							AAAA: rr.PodV6[0],
 						})
@@ -194,7 +220,7 @@ func startDns() {
 							Name:   r.Question[0].Name,
 							Rrtype: dns.TypeAAAA,
 							Class:  dns.ClassINET,
-							Ttl:    60,
+							Ttl:    1,
 						},
 						AAAA: ip,
 					})
