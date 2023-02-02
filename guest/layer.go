@@ -125,6 +125,8 @@ func untar(fo io.Reader, prefix string) {
 		hdr.Name = prefix + hdr.Name
 
 		dir, name := path.Split(hdr.Name)
+
+		// TODO we shouldnt need this? tar is supposed to contain all a files dirs, in order, i think
 		os.MkdirAll(dir, 0755)
 
 		if strings.HasPrefix(name, whiteoutPrefix) {
@@ -191,6 +193,10 @@ func untar(fo io.Reader, prefix string) {
 		case tar.TypeDir:
 			err = os.Mkdir(hdr.Name, os.FileMode(hdr.Mode))
 			if err != nil {
+
+				// dunno, there's a corner case where the dir was created earlier
+				os.Chmod(hdr.Name, os.FileMode(hdr.Mode))
+
 				if _, err2 := os.Stat(hdr.Name); err2 != nil {
 					log.Errorf("Error creating directory: %v", err)
 				}
