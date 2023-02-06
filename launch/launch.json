@@ -43,7 +43,7 @@
         }]
       }
     ],
-    "file_volumes": [
+    "block_volumes": [
         {
             "id":         "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
             "name":       "files",

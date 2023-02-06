@@ -231,13 +231,16 @@ func startDns() {
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second))
 			defer cancel()
 			m, err := dns.ExchangeContext(ctx, r, upstream)
-			if err == nil {
-				w.WriteMsg(m)
-				return
+
+			if err != nil {
+				log.Error(err)
+				continue
 			}
+
+			w.WriteMsg(m)
+			return
 		}
 
-		log.Error(err)
 
 		m := new(dns.Msg)
 		m.SetReply(r)
