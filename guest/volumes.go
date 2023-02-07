@@ -30,19 +30,26 @@ func fileVolumes() {
 	os.MkdirAll("/var/lib/docker/volumes/", 0755)
 
 	for i, ref := range CONFIG.Pod.Volumes {
-
-		if ref.Transport != "9p" {
-			continue
-		}
-
-		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
-		err := syscall.Mount(
-			fmt.Sprintf("fs%d", i),
-			"/var/lib/docker/volumes/"+ref.Name+"/_data",
-			"9p", 0, "trans=virtio,version=9p2000.L,msize=104857600",
-		)
-		if err != nil {
-			log.Errorf("cradle vfs: %s: %v", ref.Name, err)
+		if ref.Transport == "9p" {
+			os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
+			err := syscall.Mount(
+				fmt.Sprintf("fs%d", i),
+				"/var/lib/docker/volumes/"+ref.Name+"/_data",
+				"9p", 0, "trans=virtio,version=9p2000.L,msize=104857600",
+			)
+			if err != nil {
+				log.Errorf("cradle vfs: %s: %v", ref.Name, err)
+			}
+		} else if ref.Transport == "virtiofs" {
+			os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
+			err := syscall.Mount(
+				fmt.Sprintf("fs%d", i),
+				"/var/lib/docker/volumes/"+ref.Name+"/_data",
+				"virtiofs", 0, "",
+			)
+			if err != nil {
+				log.Errorf("cradle vfs: %s: %v", ref.Name, err)
+			}
 		}
 	}
 }

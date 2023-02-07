@@ -124,11 +124,16 @@ func qemuArgs(config *spec.Launch) []string {
 		"-drive", "format=raw,aio=threads,file=cache.ext4.img,readonly=off,if=none,id=drive-virtio-disk-cache",
 		"-device", "virtio-blk-device,drive=drive-virtio-disk-cache,id=virtio-disk-cache,serial=cache",
 
-		"-drive", "format=raw,aio=threads,file=swap.img,readonly=off,if=none,id=drive-virtio-disk-swap",
-		"-device", "virtio-blk-device,drive=drive-virtio-disk-swap,id=virtio-disk-swap,serial=swap",
+		// "-drive", "format=raw,aio=threads,file=swap.img,readonly=off,if=none,id=drive-virtio-disk-swap",
+		// "-device", "virtio-blk-device,drive=drive-virtio-disk-swap,id=virtio-disk-swap,serial=swap",
 
 		"-drive", "format=raw,aio=threads,file=config.tar,readonly=off,if=none,id=drive-virtio-disk-config",
 		"-device", "virtio-blk-device,drive=drive-virtio-disk-config,id=virtio-disk-config,serial=config",
+
+
+		//TODO this is for virtiofs, but security of this is unclear
+		"-object","memory-backend-file,id=mem,size=1G,mem-path=/dev/shm,share=on",
+		"-numa","node,memdev=mem",
 	}
 
 	var layerSeen = make(map[string]bool)
@@ -159,10 +164,12 @@ func qemuArgs(config *spec.Launch) []string {
 				"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
 			)
 		default:
-			fileName := fmt.Sprintf("volume.%s", volume.ID)
+			//fileName := fmt.Sprintf("volume.%s", volume.ID)
 			r = append(r,
-				"-fsdev", "local,id=fsdev-"+volume.ID+",path="+fileName+",security_model=mapped-xattr",
-				"-device", fmt.Sprintf("virtio-9p-device,fsdev=fsdev-%s,mount_tag=fs%d", volume.ID, i),
+				// "-fsdev", "local,id=fsdev-"+volume.ID+",path="+fileName+",security_model=mapped-xattr",
+				// "-device", fmt.Sprintf("virtio-9p-device,fsdev=fsdev-%s,mount_tag=fs%d", volume.ID, i),
+				"-chardev",	fmt.Sprintf("socket,id=fs.%d,path=/tmp/vhostqemu", i),
+				"-device",	fmt.Sprintf("vhost-user-fs-device,queue-size=1024,chardev=fs.%d,tag=fs%d", i,i),
 			)
 		}
 	}
