@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 6.0.7 Kernel Configuration
+# Linux/x86 6.0.18 Kernel Configuration
 #
 CONFIG_CC_VERSION_TEXT="gcc (GCC) 12.2.0"
 CONFIG_CC_IS_GCC=y
@@ -863,6 +863,7 @@ CONFIG_NET_UDP_TUNNEL=y
 # CONFIG_INET_AH is not set
 # CONFIG_INET_ESP is not set
 # CONFIG_INET_IPCOMP is not set
+CONFIG_INET_TABLE_PERTURB_ORDER=16
 CONFIG_INET_DIAG=y
 CONFIG_INET_TCP_DIAG=y
 # CONFIG_INET_UDP_DIAG is not set
@@ -1227,7 +1228,10 @@ CONFIG_NET_FLOW_LIMIT=y
 # CONFIG_MCTP is not set
 # CONFIG_WIRELESS is not set
 # CONFIG_RFKILL is not set
-# CONFIG_NET_9P is not set
+CONFIG_NET_9P=y
+CONFIG_NET_9P_FD=y
+CONFIG_NET_9P_VIRTIO=y
+# CONFIG_NET_9P_DEBUG is not set
 # CONFIG_CAIF is not set
 # CONFIG_CEPH_LIB is not set
 # CONFIG_NFC is not set
@@ -2297,6 +2301,8 @@ CONFIG_OVERLAY_FS_METACOPY=y
 #
 # Caches
 #
+CONFIG_NETFS_SUPPORT=y
+# CONFIG_NETFS_STATS is not set
 # CONFIG_FSCACHE is not set
 # end of Caches
 
@@ -2367,7 +2373,17 @@ CONFIG_MISC_FILESYSTEMS=y
 # CONFIG_SYSV_FS is not set
 # CONFIG_UFS_FS is not set
 # CONFIG_EROFS_FS is not set
-# CONFIG_NETWORK_FILESYSTEMS is not set
+CONFIG_NETWORK_FILESYSTEMS=y
+# CONFIG_NFS_FS is not set
+# CONFIG_NFSD is not set
+# CONFIG_CEPH_FS is not set
+# CONFIG_CIFS is not set
+# CONFIG_SMB_SERVER is not set
+# CONFIG_CODA_FS is not set
+# CONFIG_AFS_FS is not set
+CONFIG_9P_FS=y
+# CONFIG_9P_FS_POSIX_ACL is not set
+# CONFIG_9P_FS_SECURITY is not set
 CONFIG_NLS=y
 CONFIG_NLS_DEFAULT="iso8859-1"
 CONFIG_NLS_CODEPAGE_437=y
