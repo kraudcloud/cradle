@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/kraudcloud/cradle/badyeet"
 	"github.com/kraudcloud/cradle/spec"
-	"net"
 	"sync"
 	"syscall"
 	"time"
@@ -113,90 +112,9 @@ func vmm1(connected chan bool) {
 					log.Errorf("vmm: %v", err)
 					continue
 				}
-				CONTAINERS[container].Resize(ctrlmsg.Cols, ctrlmsg.Rows, ctrlmsg.XPixels, ctrlmsg.YPixels)
+				CONTAINERS[container].Resize(ctrlmsg.Cols, ctrlmsg.Rows)
 			}
 
-		} else if m.Key >= spec.YC_KEY_EXEC_START && m.Key <= spec.YC_KEY_EXEC_END {
-
-			execnr := uint8((m.Key - spec.YC_KEY_EXEC_START) >> 8)
-			subkey := uint8((m.Key - spec.YC_KEY_EXEC_START) & 0xff)
-
-			if subkey == spec.YC_SUB_STDIN || subkey == spec.YC_SUB_STDOUT || subkey == spec.YC_SUB_STDERR {
-				if EXECS[execnr] != nil && EXECS[execnr].stdin != nil {
-					EXECS[execnr].stdin.Write(m.Value)
-				}
-			} else if subkey == spec.YC_SUB_CLOSE_STDIN {
-				if EXECS[execnr] != nil && EXECS[execnr].stdin != nil {
-					if tcp, ok := EXECS[execnr].stdin.(*net.TCPConn); ok {
-						tcp.CloseWrite()
-					}
-					EXECS[execnr].stdin.Close()
-				}
-			} else if subkey == spec.YC_SUB_SIGNAL {
-
-				var ctrlmsg spec.ControlMessageSignal
-				err := json.Unmarshal(m.Value, &ctrlmsg)
-				if err != nil {
-					log.Errorf("vmm: %v", err)
-					continue
-				}
-
-				if EXECS[execnr] != nil && EXECS[execnr].proc != nil {
-					EXECS[execnr].proc.Signal(syscall.Signal(int(ctrlmsg.Signal)))
-				}
-			} else if subkey == spec.YC_SUB_WINCH {
-
-				var ctrlmsg spec.ControlMessageResize
-				err := json.Unmarshal(m.Value, &ctrlmsg)
-				if err != nil {
-					log.Errorf("vmm: %v", err)
-					continue
-				}
-
-				if EXECS[execnr] != nil {
-					EXECS[execnr].Resize(ctrlmsg.Cols, ctrlmsg.Rows, ctrlmsg.XPixels, ctrlmsg.YPixels)
-				}
-
-			} else if subkey == spec.YC_SUB_EXEC {
-
-				var ctrlmsg spec.ControlMessageExec
-				err := json.Unmarshal(m.Value, &ctrlmsg)
-				if err != nil {
-					log.Errorf("vmm: %v", err)
-					continue
-				}
-
-				EXECS_LOCK.Lock()
-				if EXECS[execnr] != nil {
-					EXECS_LOCK.Unlock()
-					log.Errorf("vmm: exec %d already running. likely vmm deadlock.", execnr)
-					continue
-				}
-				ex := &Exec{
-					Cmd:        ctrlmsg.Cmd,
-					WorkingDir: ctrlmsg.WorkingDir,
-					Env:        ctrlmsg.Env,
-					Tty:        ctrlmsg.Tty,
-					Host:       ctrlmsg.Host,
-					ArchiveCmd: ctrlmsg.ArchiveCmd,
-					ProxyCmd:   ctrlmsg.ProxyCmd,
-
-					containerIndex: ctrlmsg.Container,
-					execIndex:      execnr,
-				}
-				err = StartExecLocked(ex)
-				if err != nil {
-					vmm(spec.YKExec(execnr, spec.YC_SUB_STDERR), []byte(err.Error()+"\n"))
-					js, _ := json.Marshal(&spec.ControlMessageState{
-						Code:     1,
-						Error:    err.Error(),
-						StateNum: spec.STATE_EXITED,
-					})
-					vmm(spec.YKExec(execnr, spec.YC_SUB_STATE), js)
-				}
-				EXECS_LOCK.Unlock()
-			}
-		} else {
 		}
 	}
 }

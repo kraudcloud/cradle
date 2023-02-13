@@ -158,52 +158,54 @@ func network() {
 	}
 
 	// eth1: legacy vpc
-
 	eth1, err := netlink.LinkByName("eth1")
 	if err != nil {
-		log.Error("netlink.LinkByName: ", err)
-		return
-	}
 
-	//set mtu
-	err = netlink.LinkSetMTU(eth1, 1200)
+		log.Warn("netlink.legacy.LinkByName: ", err)
 
-	// set link up
-	err = netlink.LinkSetUp(eth1)
-	if err != nil {
-		log.Error("netlink.LinkSetUp: ", err)
-	}
+	} else {
 
-	//set mtu
-	err = netlink.LinkSetMTU(eth1, 1200)
-	if err != nil {
-		log.Error("netlink.LinkSetMTU: ", err)
-	}
+		//set mtu
+		err = netlink.LinkSetMTU(eth1, 1200)
 
-	// Set up the IPv4 address
-	addr2, err := netlink.ParseAddr(CONFIG.Network.Ip4)
-	if err == nil {
-		err = netlink.AddrAdd(eth1, addr2)
+		// set link up
+		err = netlink.LinkSetUp(eth1)
 		if err != nil {
-			log.Errorf("netlink.AddrAdd4 (%s): %s", addr.String(), err)
-		}
-	}
-
-	_, v4vpcnet, _ := net.ParseCIDR("10.0.0.0/8")
-
-	// Set up gateway4
-	gateway4 = net.ParseIP(CONFIG.Network.Gateway4)
-	if gateway4 != nil {
-		route := netlink.Route{
-			LinkIndex: eth1.Attrs().Index,
-			Gw:        gateway4,
-			Dst:       v4vpcnet,
+			log.Error("netlink.LinkSetUp: ", err)
 		}
 
-		err = netlink.RouteAdd(&route)
+		//set mtu
+		err = netlink.LinkSetMTU(eth1, 1200)
 		if err != nil {
-			log.Error("netlink.RouteAdd4: ", err)
+			log.Error("netlink.LinkSetMTU: ", err)
 		}
+
+		// Set up the IPv4 address
+		addr2, err := netlink.ParseAddr(CONFIG.Network.Ip4)
+		if err == nil {
+			err = netlink.AddrAdd(eth1, addr2)
+			if err != nil {
+				log.Errorf("netlink.AddrAdd4 (%s): %s", addr.String(), err)
+			}
+		}
+
+		_, v4vpcnet, _ := net.ParseCIDR("10.0.0.0/8")
+
+		// Set up gateway4
+		gateway4 = net.ParseIP(CONFIG.Network.Gateway4)
+		if gateway4 != nil {
+			route := netlink.Route{
+				LinkIndex: eth1.Attrs().Index,
+				Gw:        gateway4,
+				Dst:       v4vpcnet,
+			}
+
+			err = netlink.RouteAdd(&route)
+			if err != nil {
+				log.Error("netlink.RouteAdd4: ", err)
+			}
+		}
+
 	}
 
 	// set up nameservers

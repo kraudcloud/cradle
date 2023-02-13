@@ -143,9 +143,12 @@ func startDns() {
 		log.Printf("DNS : %s", r.Question[0].Name)
 
 		// delay the first request until we have a coherent vpc view
-		if !DNS.firstViewHasArrived.Load() {
+		if !DNS.firstViewHasArrived.Load() && CONFIG.Role != nil {
 			log.Printf("DNS : waiting for first view")
-			<-DNS.firstViewArrival.Done()
+			select {
+			case <-DNS.firstViewArrival.Done():
+			case <-time.After(10 * time.Second):
+			}
 		}
 
 		if len(r.Question) == 1 && r.Question[0].Qtype == dns.TypeTXT {
@@ -240,7 +243,6 @@ func startDns() {
 			w.WriteMsg(m)
 			return
 		}
-
 
 		m := new(dns.Msg)
 		m.SetReply(r)

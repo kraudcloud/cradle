@@ -3,20 +3,12 @@
 package main
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/creack/pty"
-	"github.com/kraudcloud/cradle/spec"
 	"golang.org/x/sys/unix"
 	"io"
-	"net"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -31,197 +23,53 @@ type Exec struct {
 	WorkingDir string
 	Env        []string
 	Tty        bool
-	Host       bool
-	ArchiveCmd bool
-	ProxyCmd   bool
+	host       bool
+
+	running  bool
+	exitcode int
 
 	containerIndex uint8
 	execIndex      uint8
 
-	ptmx  *os.File
-	stdin io.WriteCloser
-	proc  *os.Process
-}
-
-type DockerFileInfo struct {
-	Name       string      `json:"name"`
-	Size       int64       `json:"size"`
-	Mode       os.FileMode `json:"mode"`
-	ModTime    time.Time   `json:"mtime"`
-	IsDir      bool        `json:"isDir"`
-	LinkTarget string      `json:"linkTarget"`
+	ptmx *os.File
+	proc *os.Process
 }
 
 var EXECS = make(map[uint8]*Exec)
 var EXECS_LOCK sync.Mutex
 
-func StartExecLocked(e *Exec) (err error) {
+func (e *Exec) Run(dout io.WriteCloser, din io.Reader) {
 
-	log.Printf("StartExecLocked: %v %v", e.ArchiveCmd, e)
-
-	if e.ProxyCmd {
-
-		var stdout = &VmmWriter{
-			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
-			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
-		}
-
-		EXECS[e.execIndex] = e
-
-		go func() {
-			defer stdout.Close()
-
-			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
-			defer cancel()
-
-			dialer := net.Dialer{
-				Timeout:   5 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}
-
-			log.Printf("proxy command: %d %v\n", e.execIndex, e.Cmd)
-			conn, err := dialer.DialContext(ctx, "tcp", e.Cmd[1])
-			if err != nil {
-				stdout.Write([]byte(fmt.Sprintf("HTTP/1.1 502 PROXY FAILED\r\n\r\n%v\r\n", err)))
-			} else {
-				defer conn.Close()
-				stdout.Write([]byte("HTTP/1.1 101 UPGRADING\r\n\r\n"))
-				e.stdin = conn
-				io.Copy(stdout, conn)
-			}
-
-			js, _ := json.Marshal(&spec.ControlMessageState{
-				StateNum: spec.STATE_EXITED,
-				Code:     int32(0),
-			})
-			vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
-
-			EXECS_LOCK.Lock()
-			delete(EXECS, e.execIndex)
-			EXECS_LOCK.Unlock()
-
-			fmt.Println("PROXY ENDS")
-		}()
-
-		return nil
-
-	} else if e.ArchiveCmd && e.Cmd[0] == "GET" {
-
-		log.Printf("archive command: %v", e.Cmd)
-
-		CONTAINERS_LOCK.Lock()
-		cid := CONTAINERS[e.containerIndex].Spec.ID
-		CONTAINERS_LOCK.Unlock()
-
-		e.WorkingDir = path.Join("/cache/containers", cid, "root", e.WorkingDir)
-
-		var stdout = &VmmWriter{
-			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
-			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
-		}
-
-		EXECS[e.execIndex] = e
-
-		go func() {
-			defer stdout.Close()
-
-			stat, err := os.Stat(e.WorkingDir)
-			f, err2 := os.Open(e.WorkingDir)
-			if err != nil || err2 != nil || stat.IsDir() {
-
-				stdout.Write([]byte("HTTP/1.1 404 NOT FOUND\r\nConnection: Close\r\n\r\n"))
-				stdout.Close()
-
-				js, _ := json.Marshal(&spec.ControlMessageState{
-					StateNum: spec.STATE_EXITED,
-					Code:     int32(404),
-				})
-				vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
-
-				EXECS_LOCK.Lock()
-				delete(EXECS, e.execIndex)
-				EXECS_LOCK.Unlock()
-
-				return
-			}
-			defer f.Close()
-
-			js, _ := json.Marshal(&DockerFileInfo{
-				Name:       e.WorkingDir,
-				Size:       stat.Size(),
-				Mode:       stat.Mode(),
-				ModTime:    stat.ModTime(),
-				IsDir:      stat.IsDir(),
-				LinkTarget: "",
-			})
-
-			jsb64 := base64.StdEncoding.EncodeToString(js)
-
-			stdout.Write([]byte("HTTP/1.1 200 OK\r\nConnection: Close\r\nX-Docker-Container-Path-Stat: "))
-			stdout.Write([]byte(jsb64))
-			stdout.Write([]byte("\r\n"))
-
-			if e.Cmd[1] == "tar" {
-				stdout.Write([]byte("Content-Type: application/x-tar\r\n"))
-				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + ".tar\"\r\n\r\n"))
-
-				tw := tar.NewWriter(stdout)
-				tw.WriteHeader(&tar.Header{
-					Name:    path.Base(e.WorkingDir),
-					Mode:    int64(stat.Mode()),
-					Size:    stat.Size(),
-					ModTime: stat.ModTime(),
-				})
-				io.Copy(tw, f)
-				tw.Close()
-
-			} else if e.Cmd[1] == "zip" {
-				stdout.Write([]byte("Content-Type: application/zip\r\n\r\n"))
-				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + ".zip\"\r\n\r\n"))
-
-				zipw := zip.NewWriter(stdout)
-				f2, _ := zipw.Create(path.Base(e.WorkingDir))
-				io.Copy(f2, f)
-				zipw.Close()
-
-			} else if e.Cmd[1] == "none" {
-				stdout.Write([]byte("Content-Type: application/octet-stream\r\nContent-Length: " + strconv.FormatInt(stat.Size(), 10) + "\r\n"))
-				stdout.Write([]byte("Content-Disposition: attachment; filename=\"" + path.Base(e.WorkingDir) + "\"\r\n\r\n"))
-
-				io.Copy(stdout, f)
-
-			} else {
-				stdout.Write([]byte("HTTP/1.1 400 BAD REQUEST\r\nConnection: Close\r\n\r\n"))
-				stdout.Close()
-			}
-
-			EXECS_LOCK.Lock()
-			delete(EXECS, e.execIndex)
-			EXECS_LOCK.Unlock()
-
-			var exitcode = 0
-			js, _ = json.Marshal(&spec.ControlMessageState{
-				StateNum: spec.STATE_EXITED,
-				Code:     int32(exitcode),
-			})
-			vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
-		}()
-
-		return nil
-	}
+	defer dout.Close()
 
 	var cmd *exec.Cmd
 
-	if e.Host {
+	if e.host {
 		cmd = exec.Command(e.Cmd[0], e.Cmd[1:]...)
 	} else {
 
 		CONTAINERS_LOCK.Lock()
+		if e.containerIndex >= uint8(len(CONTAINERS)) {
+
+			CONTAINERS_LOCK.Unlock()
+
+			fmt.Fprintf(dout, "too early. container still creating.\r\n")
+			e.exitcode = 1
+			e.running = false
+			go func() {
+				time.Sleep(3 * time.Second)
+				EXECS_LOCK.Lock()
+				delete(EXECS, e.execIndex)
+				EXECS_LOCK.Unlock()
+			}()
+			return
+		}
 		container := CONTAINERS[e.containerIndex]
 		CONTAINERS_LOCK.Unlock()
 
 		if container == nil {
-			return fmt.Errorf("no such container")
+			fmt.Fprintf(dout, "no such container\n")
+			return
 		}
 
 		if e.WorkingDir == "" {
@@ -248,94 +96,109 @@ func StartExecLocked(e *Exec) (err error) {
 	if e.Tty {
 		ptmx, err := pty.Start(cmd)
 		if err != nil {
-			return err
+			fmt.Fprintf(dout, "failed to start pty: %v\n", err)
+			return
 		}
+		defer ptmx.Close()
 
 		e.ptmx = ptmx
 		e.proc = cmd.Process
-		e.stdin = ptmx
 
-		var stdout = &VmmWriter{
-			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
-			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
-		}
-		go func() {
-			io.Copy(stdout, e.ptmx)
-		}()
+		go io.Copy(ptmx, din)
+		go io.Copy(dout, ptmx)
+
 	} else {
+
+		cmd.Stdin = din
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			return err
+			fmt.Fprintf(dout, "failed to get stdout: %v\n", err)
+			return
 		}
+		defer stdout.Close()
+
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			fmt.Fprintf(dout, "failed to get stderr: %v\n", err)
+			return
 		}
-		e.stdin, err = cmd.StdinPipe()
-		if err != nil {
-			return err
-		}
+		defer stderr.Close()
 
 		err = cmd.Start()
 		if err != nil {
-			return err
+			fmt.Fprintf(dout, "failed to start: %v\n", err)
+			return
 		}
-
-		var xstdout = &VmmWriter{
-			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDOUT),
-			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDOUT),
-		}
-		go func() {
-			io.Copy(xstdout, stdout)
-		}()
-
-		var xstderr = &VmmWriter{
-			WriteKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STDERR),
-			CloseKey: spec.YKExec(uint8(e.execIndex), spec.YC_SUB_CLOSE_STDERR),
-		}
-		go func() {
-			io.Copy(xstderr, stderr)
-		}()
-
 		e.proc = cmd.Process
+
+		go func() {
+			var buf [1024]byte
+			for {
+				n, err := stdout.Read(buf[:])
+				if err != nil {
+					return
+				}
+
+				if dout, ok := dout.(*DockerMux); ok {
+					dout.WriteStream(1, buf[:n])
+				} else {
+					dout.Write(buf[:n])
+				}
+			}
+		}()
+
+		go func() {
+			var buf [1024]byte
+			for {
+				n, err := stderr.Read(buf[:])
+				if err != nil {
+					return
+				}
+				if dout, ok := dout.(*DockerMux); ok {
+					dout.WriteStream(2, buf[:n])
+				} else {
+					dout.Write(buf[:n])
+				}
+			}
+		}()
+
 	}
 
+	e.exitcode = -1
+	ps, err := e.proc.Wait()
+	if err == nil && ps != nil {
+		e.exitcode = ps.ExitCode()
+	}
+
+	e.running = false
 	go func() {
-
-		var exitcode = -1
-
-		ps, err := e.proc.Wait()
-		if err == nil && ps != nil {
-			exitcode = ps.ExitCode()
-		}
-
+		time.Sleep(3 * time.Second)
 		EXECS_LOCK.Lock()
 		delete(EXECS, e.execIndex)
 		EXECS_LOCK.Unlock()
-
-		js, _ := json.Marshal(&spec.ControlMessageState{
-			StateNum: spec.STATE_EXITED,
-			Code:     int32(exitcode),
-		})
-		vmm(spec.YKExec(uint8(e.execIndex), spec.YC_SUB_STATE), js)
 	}()
 
-	EXECS[e.execIndex] = e
-
-	return nil
+	return
 }
 
-func (c *Exec) Resize(rows uint16, cols uint16, xpixel uint16, ypixel uint16) error {
+func (c *Exec) Resize(w uint16, h uint16) error {
 	if c.ptmx == nil {
 		return nil
 	}
-	return pty.Setsize(c.ptmx, &pty.Winsize{
-		Rows: rows,
-		Cols: cols,
-		X:    xpixel,
-		Y:    ypixel,
+
+	err := pty.Setsize(c.ptmx, &pty.Winsize{
+		Rows: uint16(h),
+		Cols: uint16(w),
 	})
+
+	if err != nil {
+		return err
+	}
+
+	c.proc.Signal(syscall.SIGWINCH)
+
+	return nil
 }
 
 func main_nsenter() {

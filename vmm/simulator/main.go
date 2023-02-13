@@ -23,6 +23,7 @@ import (
 func main() {
 
 	fmt.Println("DOCKER_HOST=tcp://localhost:8665")
+	fmt.Println("DOCKER_HOST='tcp://[fddd::2]:1'")
 
 	var launchConfig = &spec.Launch{}
 	f, err := os.Open("../launch/launch.json")
@@ -96,7 +97,7 @@ func main() {
 func qemuArgs(config *spec.Launch) []string {
 
 	var r = []string{
-		"/opt/kraud/qemu/bin/qemu-system-x86_64",
+		"qemu-system-x86_64",
 		"-nographic", "-nodefaults", "-no-user-config", "-nographic", "-enable-kvm", "-no-reboot", "-no-acpi",
 		"-cpu", "host",
 		"-M", "microvm,x-option-roms=off,pit=off,pic=off,isa-serial=off,rtc=off",
@@ -117,7 +118,7 @@ func qemuArgs(config *spec.Launch) []string {
 		"-append", "earlyprintk=hvc0 console=hvc0 loglevel=5",
 
 		"-device", "virtio-net-device,netdev=eth0",
-		"-netdev", "user,id=eth0", //TODO
+		"-netdev", "tap,id=eth0,ifname=tap0,script=tap.sh,downscript=no",
 
 		"-device", "virtio-scsi-device,id=scsi0",
 
@@ -153,6 +154,8 @@ func qemuArgs(config *spec.Launch) []string {
 		}
 	}
 
+
+	/*
 	for i, volume := range config.Pod.Volumes {
 
 		switch volume.Class {
@@ -173,6 +176,7 @@ func qemuArgs(config *spec.Launch) []string {
 			)
 		}
 	}
+	*/
 
 	fmt.Println(r)
 

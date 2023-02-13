@@ -1,4 +1,6 @@
-package vmm
+// Copyright (c) 2020-present devguard GmbH
+
+package main
 
 import (
 	"io"

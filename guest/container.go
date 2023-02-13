@@ -214,18 +214,6 @@ func main_runc() {
 	}
 }
 
-func (c *Container) Resize(w uint16, h uint16, xpixsels uint16, ypixels uint16) error {
-	if c.Pty == nil {
-		return nil
-	}
-	return pty.Setsize(c.Pty, &pty.Winsize{
-		Rows: h,
-		Cols: w,
-		X:    xpixsels,
-		Y:    ypixels,
-	})
-}
-
 func (c *Container) prepare() error {
 	var cache = fmt.Sprintf("/cache/containers/%s", c.Spec.ID)
 	var root = fmt.Sprintf("/cache/containers/%s/root", c.Spec.ID)
@@ -358,8 +346,8 @@ func (c *Container) run() error {
 		c.Lock.Unlock()
 
 		go func() {
-			defer c.Stdout.Close()
-			n, err := io.Copy(c.Stdout, c.Pty)
+			defer c.Log.Close()
+			n, err := io.Copy(c.Log, c.Pty)
 			if false {
 				log.Debugf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
 			}
@@ -388,18 +376,30 @@ func (c *Container) run() error {
 		c.Lock.Unlock()
 
 		go func() {
-			defer c.Stderr.Close()
-			n, err := io.Copy(c.Stderr, stderr)
-			if false {
-				log.Debugf("container %s stdout ended after reading %d bytes: %s", c.Spec.ID, n, err)
+			defer c.Log.Close()
+			var buf [1024]byte
+			for {
+				n, err := stdout.Read(buf[:])
+				if n > 0 {
+					c.Log.WriteWithDockerStream(buf[:n], 1)
+				}
+				if err != nil {
+					break
+				}
 			}
 		}()
 
 		go func() {
-			defer c.Stdout.Close()
-			n, err := io.Copy(c.Stdout, stdout)
-			if false {
-				log.Debugf("container %s stderr ended after reading %d bytes: %s", c.Spec.ID, n, err)
+			defer c.Log.Close()
+			var buf [1024]byte
+			for {
+				n, err := stderr.Read(buf[:])
+				if n > 0 {
+					c.Log.WriteWithDockerStream(buf[:n], 2)
+				}
+				if err != nil {
+					break
+				}
 			}
 		}()
 	}
@@ -427,6 +427,28 @@ func (c *Container) run() error {
 	if !state.Success() {
 		return fmt.Errorf(state.String())
 	}
+
+	return nil
+}
+
+func (c *Container) Resize(w uint16, h uint16) error {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
+	if c.Pty == nil {
+		return fmt.Errorf("no pty")
+	}
+
+	err := pty.Setsize(c.Pty, &pty.Winsize{
+		Rows: uint16(h),
+		Cols: uint16(w),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	c.Process.Signal(syscall.SIGWINCH)
 
 	return nil
 }

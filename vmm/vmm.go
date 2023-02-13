@@ -6,11 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kraudcloud/cradle/spec"
 	"github.com/kraudcloud/cradle/badyeet"
+	"github.com/kraudcloud/cradle/spec"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -66,12 +67,15 @@ func (self *Vmm) Write(p []byte) (n int, err error) {
 
 func (self *Vmm) Shutdown(msg string) error {
 
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	if self.yc != nil {
-		self.yc.Write(badyeet.Message{Key: spec.YC_KEY_SHUTDOWN, Value: []byte(msg)})
+	r, err := http.Post(fmt.Sprintf("http://[%s]:1/v1.41/vmm/shutdown?reason=%s",
+		self.config.Network.FabricIp6,
+		url.QueryEscape(msg),
+	), "application/json", nil)
+	if err != nil {
+		return err
 	}
+
+	r.Body.Close()
 	return nil
 }
 

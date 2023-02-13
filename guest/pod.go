@@ -17,9 +17,8 @@ type Container struct {
 	Index uint8
 	Spec  spec.Container
 
-	Stdout io.WriteCloser
-	Stderr io.WriteCloser
-	Stdin  io.WriteCloser
+	Log   *Log
+	Stdin io.WriteCloser
 
 	Lock    sync.Mutex
 	Pty     *os.File
@@ -51,16 +50,11 @@ func pod() {
 
 		ctx, cancel := context.WithCancel(context.Background())
 
+		log := NewLog(1024 * 1024)
+
 		container := &Container{
-			Index: uint8(i),
-			Stdout: &VmmWriter{
-				WriteKey: spec.YKContainer(uint8(i), spec.YC_SUB_STDOUT),
-				CloseKey: spec.YKContainer(uint8(i), spec.YC_SUB_CLOSE_STDOUT),
-			},
-			Stderr: &VmmWriter{
-				WriteKey: spec.YKContainer(uint8(i), spec.YC_SUB_STDERR),
-				CloseKey: spec.YKContainer(uint8(i), spec.YC_SUB_CLOSE_STDERR),
-			},
+			Index:  uint8(i),
+			Log:    log,
 			Spec:   c,
 			cancel: cancel,
 		}

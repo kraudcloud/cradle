@@ -25,8 +25,7 @@
             "sh"
           ],
           "env": {
-            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "_KR_XCRADLE_URL": "https://dev-aep.kraudcloud.com/client"
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           },
           "workdir": "/etc"
         },
@@ -52,9 +51,11 @@
     ]
   },
   "network" : {
+    "fip6": "fddd::2",
+    "fgw6": "fddd::1",
     "tip4" : "10.0.2.15",
     "tgw4" : "10.0.2.2",
-    "nameservers" : [ "1.1.1.1"]
+    "nameservers" : ["1.1.1.1"]
   }
 }
 

@@ -6,6 +6,7 @@ require (
 	github.com/aep/yeet v0.0.0-20230131123822-02f4d4f632a4
 	github.com/creack/pty v1.1.18
 	github.com/dustin/go-humanize v1.0.0
+	github.com/euank/go-kmsg-parser/v2 v2.1.0
 	github.com/google/go-sev-guest v0.3.0
 	github.com/miekg/dns v1.1.50
 	github.com/pkg/xattr v0.4.9

@@ -169,10 +169,11 @@ func untar(fo io.Reader, prefix string) {
 				continue
 			}
 			if hdr.Typeflag == tar.TypeReg {
-				_, err = io.Copy(f, t)
+				n, err := io.Copy(f, t)
 				if err != nil {
 					log.Errorf("Error writing file: %v", err)
 				}
+				f.Truncate(n)
 			}
 			f.Close()
 		case tar.TypeSymlink:
