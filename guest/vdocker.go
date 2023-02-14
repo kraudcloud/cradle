@@ -487,7 +487,6 @@ func handleContainerResize(w http.ResponseWriter, r *http.Request, index uint8) 
 	}
 
 	container.Resize(uint16(vw), uint16(vh))
-
 }
 
 func writeError(w http.ResponseWriter, err string) {
@@ -552,9 +551,17 @@ func handleCradleKrShell(w http.ResponseWriter, r *http.Request) {
 
 func handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	follow := r.URL.Query().Get("follow") == "true" || r.URL.Query().Get("follow") == "1"
+
 	w.WriteHeader(200)
 
 	fw := &FlushWriter{w}
+
+	dmesg(r.Context(), fw, follow)
+}
+
+
+func dmesg(ctx context.Context, w io.Writer, follow bool) {
+
 
 	parser, err := kmsgparser.NewParser()
 	if err != nil {
@@ -562,6 +569,12 @@ func handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer parser.Close()
+
+	go func() {
+		<-ctx.Done()
+		parser.Close()
+	}()
+
 
 	if !follow {
 		go func() {
@@ -593,7 +606,8 @@ func handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 			uq = "\033[1;31m" + uq + "\033[0m"
 		}
 
-		fmt.Fprintf(fw, "[%2d] %s: %s\n", msg.Priority, msg.Timestamp.Format("2006-01-02 15:04:05"), uq)
+		fmt.Fprintf(w, "[%2d %s]: %s\r\n", msg.Priority, msg.Timestamp.Format("2006-01-02 15:04:05"), uq)
+
 	}
 
 }

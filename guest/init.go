@@ -25,18 +25,37 @@ func main_init() {
 
 	wdinit()
 	makedev()
-	vmminit()
-	mountnvme()
-	config()
-	network()
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	go func() {
+		vmminit()
+		wg.Done()
+	}()
+
+	go func() {
+		mountnvme()
+		wg.Done()
+	}()
+
+	go func() {
+		config()
+		network()
+		podPrepare()
+		go vmm3()
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+
 	services()
 	startDns()
-	go vmm3()
 	rebind46()
 	vdocker()
 	extpreboot()
 
-	var wg sync.WaitGroup
 	wg.Add(3)
 	go func() {
 		unpackLayers()
@@ -52,7 +71,9 @@ func main_init() {
 	}()
 	wg.Wait()
 
-	pod()
+	podUp()
+
+	log.Println("cradle: up")
 
 	for {
 		time.Sleep(time.Minute)

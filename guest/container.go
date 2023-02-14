@@ -3,7 +3,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
@@ -404,10 +404,7 @@ func (c *Container) run() error {
 		}()
 	}
 
-	js, _ := json.Marshal(spec.ControlMessageState{
-		StateNum: spec.STATE_RUNNING,
-	})
-	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
+	reportContainerState(c.Spec.ID, spec.STATE_RUNNING, 0, "", nil)
 
 	state, err := cmd.Process.Wait()
 	if err != nil {
@@ -417,12 +414,9 @@ func (c *Container) run() error {
 
 	c.Pty.Close()
 
-	js, _ = json.Marshal(spec.ControlMessageState{
-		StateNum: spec.STATE_EXITED,
-		Code:     int32(state.ExitCode()),
-		Error:    state.String(),
-	})
-	vmm(spec.YKContainer(c.Index, spec.YC_SUB_STATE), js)
+	lastlog := bytes.Buffer{}
+	c.Log.WriteTo(&lastlog)
+	reportContainerState(c.Spec.ID, spec.STATE_EXITED, state.ExitCode(), state.String(), lastlog.Bytes())
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

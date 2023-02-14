@@ -87,6 +87,9 @@ func network() {
 		log.Errorf("netlink.fabric.AddrAdd6 (%s): %s", addr.String(), err)
 	}
 
+	log.Println("fip:", CONFIG.Network.FabricIp6)
+
+
 	gateway6 := net.ParseIP(CONFIG.Network.FabricGw6)
 	if gateway6 == nil {
 		log.Errorf("net.ParseIP(CONFIG.Network.FabricGw6): %s is not a valid IPv6 address", CONFIG.Network.FabricGw6)

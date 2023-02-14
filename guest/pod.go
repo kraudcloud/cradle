@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
@@ -30,13 +31,7 @@ type Container struct {
 var CONTAINERS = []*Container{}
 var CONTAINERS_LOCK sync.Mutex
 
-func pod() {
-
-	if CONFIG.Pod == nil {
-		return
-	}
-
-	syscall.Sethostname([]byte(CONFIG.Pod.Name + "." + CONFIG.Pod.Namespace))
+func podPrepare() {
 
 	CONTAINERS_LOCK.Lock()
 	defer CONTAINERS_LOCK.Unlock()
@@ -51,7 +46,6 @@ func pod() {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		log := NewLog(1024 * 1024)
-
 		container := &Container{
 			Index:  uint8(i),
 			Log:    log,
@@ -59,12 +53,41 @@ func pod() {
 			cancel: cancel,
 		}
 
-		go container.manager(ctx)
+		go dmesg(ctx, log, true)
+
+
 		CONTAINERS = append(CONTAINERS, container)
 	}
 }
 
-func (c *Container) stop() {
+func podUp() {
+
+	syscall.Sethostname([]byte(CONFIG.Pod.Name + "." + CONFIG.Pod.Namespace))
+
+	CONTAINERS_LOCK.Lock()
+	defer CONTAINERS_LOCK.Unlock()
+
+	for i, _ := range CONTAINERS {
+
+		if i >= 255 {
+			log.Error("too many containers")
+			break
+		}
+
+		// cancel the dmesg
+		CONTAINERS[i].cancel()
+
+		CONTAINERS[i].Log.Write([]byte("[        o ~.~ o       ]: entering container " +
+			CONTAINERS[i].Spec.Name + "\r\n\r\n"))
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		CONTAINERS[i].cancel=cancel
+		go CONTAINERS[i].manager(ctx)
+	}
+}
+
+func (c *Container) stop(reason string) {
 
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
@@ -91,6 +114,10 @@ func (c *Container) stop() {
 		}
 	}
 	c.cancel()
+
+	lastlog := bytes.Buffer{}
+	c.Log.WriteTo(&lastlog)
+	reportContainerState(c.Spec.ID, spec.STATE_EXITED, -1, reason, lastlog.Bytes())
 }
 
 func (c *Container) manager(ctx context.Context) {

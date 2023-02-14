@@ -31,11 +31,12 @@ func procmounts() []string {
 func exit(err error) {
 
 	for _, container := range CONTAINERS {
-		container.stop()
+		container.stop(err.Error())
 	}
 
 	log.Errorf("shutdown reason: %s\n", err.Error())
 	fmt.Printf("shutdown reason: %s\n", err.Error())
+
 	vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
 
 	// cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")
