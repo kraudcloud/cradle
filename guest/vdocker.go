@@ -559,9 +559,7 @@ func handleCradleLogs(w http.ResponseWriter, r *http.Request) {
 	dmesg(r.Context(), fw, follow)
 }
 
-
 func dmesg(ctx context.Context, w io.Writer, follow bool) {
-
 
 	parser, err := kmsgparser.NewParser()
 	if err != nil {
@@ -574,7 +572,6 @@ func dmesg(ctx context.Context, w io.Writer, follow bool) {
 		<-ctx.Done()
 		parser.Close()
 	}()
-
 
 	if !follow {
 		go func() {

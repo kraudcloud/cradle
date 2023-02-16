@@ -55,7 +55,6 @@ func podPrepare() {
 
 		go dmesg(ctx, log, true)
 
-
 		CONTAINERS = append(CONTAINERS, container)
 	}
 }
@@ -82,7 +81,7 @@ func podUp() {
 
 		ctx, cancel := context.WithCancel(context.Background())
 
-		CONTAINERS[i].cancel=cancel
+		CONTAINERS[i].cancel = cancel
 		go CONTAINERS[i].manager(ctx)
 	}
 }

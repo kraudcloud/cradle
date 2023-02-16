@@ -145,6 +145,17 @@ func main_runc() {
 			flags |= syscall.MS_RDONLY
 		}
 
+		// if the volume is empty, copy the target into the volume
+		// docker has a nocopy flag as part of the VolumeOptions, but we don't have that
+
+		files, _ := os.ReadDir(vp)
+		if len(files) == 0 {
+			err := CopyDirectory(gp, vp)
+			if err != nil {
+				log.Errorf("cradle: volume '%s' copy from target failed: %s", m.VolumeName, err)
+			}
+		}
+
 		err := syscall.Mount(vp, gp, "none", flags, "")
 		if err != nil {
 			log.Errorf("mount: %v", err)

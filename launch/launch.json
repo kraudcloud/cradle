@@ -38,7 +38,7 @@
         },
         "block_volume_mounts": [{
             "block_volume_name":  "files",
-            "guest_path":         "/data"
+            "guest_path":         "/etc"
         }]
       }
     ],
@@ -46,7 +46,7 @@
         {
             "id":         "e4ee5e4a-ce31-47d6-a72e-f9e316439b5c",
             "name":       "files",
-            "transport":  "9p"
+            "class":      "rbd"
         }
     ]
   },

@@ -155,7 +155,6 @@ func qemuArgs(config *spec.Launch) []string {
 	}
 
 
-	/*
 	for i, volume := range config.Pod.Volumes {
 
 		switch volume.Class {
@@ -176,7 +175,6 @@ func qemuArgs(config *spec.Launch) []string {
 			)
 		}
 	}
-	*/
 
 	fmt.Println(r)
 

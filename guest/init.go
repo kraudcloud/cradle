@@ -49,7 +49,6 @@ func main_init() {
 
 	wg.Wait()
 
-
 	services()
 	startDns()
 	rebind46()

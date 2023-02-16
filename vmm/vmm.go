@@ -169,8 +169,8 @@ func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 	}
 	self.yc, err = badyeet.Connect(conn,
 		badyeet.Hello("libvmm,1"),
-		badyeet.Keepalive(500*time.Millisecond),
-		badyeet.HandshakeTimeout(10*time.Second),
+		badyeet.Keepalive(time.Second),
+		badyeet.HandshakeTimeout(time.Minute),
 	)
 	if err != nil {
 		return nil, err
