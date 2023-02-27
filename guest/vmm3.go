@@ -94,7 +94,10 @@ func reportContainerState(
 	mm := map[string]interface{}{
 		"State":    state,
 		"Message":  msg,
-		"ExitCode": code,
+	}
+
+	if code != -1 {
+		mm["ExitCode"] = code
 	}
 
 	if len(lastlog) > 0 {
