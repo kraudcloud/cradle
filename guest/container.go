@@ -150,10 +150,7 @@ func main_runc() {
 
 		files, _ := os.ReadDir(vp)
 		if len(files) == 0 {
-			err := CopyDirectory(gp, vp)
-			if err != nil {
-				log.Errorf("cradle: volume '%s' copy from target failed: %s", m.VolumeName, err)
-			}
+			CopyDirectory(gp, vp)
 		}
 
 		err := syscall.Mount(vp, gp, "none", flags, "")

@@ -30,6 +30,8 @@ func procmounts() []string {
 
 func exit(err error) {
 
+	reportExit(err.Error())
+
 	for _, container := range CONTAINERS {
 		container.stop(err.Error())
 	}

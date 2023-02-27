@@ -10,10 +10,10 @@ import (
 	"syscall"
 )
 
-func CopyDirectory(scrDir, dest string) error {
+func CopyDirectory(scrDir, dest string) {
 	entries, err := os.ReadDir(scrDir)
 	if err != nil {
-		return err
+		return
 	}
 	for _, entry := range entries {
 		sourcePath := filepath.Join(scrDir, entry.Name())
@@ -21,49 +21,52 @@ func CopyDirectory(scrDir, dest string) error {
 
 		fileInfo, err := os.Stat(sourcePath)
 		if err != nil {
-			return err
+			log.Errorf("volume: failed to get file info for '%s', error: '%s'", sourcePath, err.Error())
+			continue
 		}
 
 		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
 		if !ok {
-			return fmt.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
+			log.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
+			continue
 		}
 
 		switch fileInfo.Mode() & os.ModeType {
 		case os.ModeDir:
 			if err := CreateIfNotExists(destPath, 0755); err != nil {
-				return err
+				log.Errorf("volume: failed to create directory: '%s', error: '%s'", destPath, err.Error())
+				continue
 			}
-			if err := CopyDirectory(sourcePath, destPath); err != nil {
-				return err
-			}
+			CopyDirectory(sourcePath, destPath)
 		case os.ModeSymlink:
 			if err := CopySymLink(sourcePath, destPath); err != nil {
-				return err
+				log.Errorf("volume: failed to copy symlink: '%s', error: '%s'", sourcePath, err.Error())
+				continue
 			}
 		default:
 			if err := Copy(sourcePath, destPath); err != nil {
-				return err
+				log.Errorf("volume: failed to copy file: '%s', error: '%s'", sourcePath, err.Error())
+				continue
 			}
 		}
 
 		if err := os.Lchown(destPath, int(stat.Uid), int(stat.Gid)); err != nil {
-			return err
+			log.Errorf("volume: failed to change owner for '%s', error: '%s'", destPath, err.Error())
 		}
 
 		fInfo, err := entry.Info()
 		if err != nil {
-			return err
+			log.Errorf("volume: failed to get file info for '%s', error: '%s'", sourcePath, err.Error())
 		}
 
 		isSymlink := fInfo.Mode()&os.ModeSymlink != 0
 		if !isSymlink {
 			if err := os.Chmod(destPath, fInfo.Mode()); err != nil {
-				return err
+				log.Errorf("volume: failed to change mode for '%s', error: '%s'", destPath, err.Error())
 			}
 		}
 	}
-	return nil
+	return
 }
 
 func Copy(srcFile, dstFile string) error {
