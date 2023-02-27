@@ -95,7 +95,7 @@ func unpackLayers() {
 						continue
 					}
 					if parts[1] != hash {
-						exit(fmt.Errorf("layer %s sha256 mismatch %s != %s", uuid, layer.Sha256, hash))
+						exit(fmt.Errorf("layer %s sha256 mismatch: expected: %s but got: %s", uuid, parts[1], hash))
 						return
 					}
 				}
