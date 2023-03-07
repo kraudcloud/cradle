@@ -412,7 +412,7 @@ func (c *Container) run() error {
 		}()
 	}
 
-	reportContainerState(c.Spec.ID, spec.STATE_RUNNING, 0, "", nil)
+	reportContainerState(c.Spec.ID, spec.STATE_RUNNING, -1, "", nil)
 
 	state, err := cmd.Process.Wait()
 	if err != nil {

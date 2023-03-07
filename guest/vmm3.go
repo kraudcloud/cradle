@@ -123,7 +123,7 @@ func reportContainerState(
 			}
 			rsp.Body.Close()
 
-			if rsp.StatusCode == 201 || rsp.StatusCode == 200 {
+			if rsp.StatusCode < 400 {
 				return
 			}
 
