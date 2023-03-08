@@ -334,33 +334,37 @@ func handleContainerKill(w http.ResponseWriter, r *http.Request, index uint8) {
 	signal := strings.ToUpper(r.URL.Query().Get("signal"))
 	fmt.Println("signal", signal)
 
-	signalnum := 15
-
-	if signal == "KILL" {
+	// https://docs.docker.com/engine/reference/commandline/kill/#description defaults to KILL.
+	signalnum := 0x9
+	signal = strings.TrimPrefix(signal, "SIG")
+	switch signal {
+	case "KILL":
 		signalnum = 0x9
-	} else if signal == "INT" {
+	case "INT":
 		signalnum = 0x2
-	} else if signal == "IO" {
+	case "IO":
 		signalnum = 0x1d
-	} else if signal == "QUIT" {
+	case "QUIT":
 		signalnum = 0x3
-	} else if signal == "HUP" {
+	case "HUP":
 		signalnum = 0x1
-	} else if signal == "STOP" {
+	case "STOP":
 		signalnum = 0x13
-	} else if signal == "WINCH" {
+	case "WINCH":
 		signalnum = 0x1c
-	} else if signal == "TERM" {
+	case "TERM":
 		signalnum = 0xf
-	} else {
-		return
+	default:
+		num, _ := strconv.Atoi(signal)
+		if num > 0 {
+			signalnum = num
+		}
 	}
 
 	container := CONTAINERS[index]
 	container.Process.Signal(syscall.Signal(signalnum))
 
 	w.WriteHeader(200)
-	return
 }
 
 func handleContainerLogs(w http.ResponseWriter, r *http.Request, index uint8) {
