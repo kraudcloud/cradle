@@ -334,8 +334,10 @@ func handleContainerKill(w http.ResponseWriter, r *http.Request, index uint8) {
 	signal := strings.ToUpper(r.URL.Query().Get("signal"))
 	fmt.Println("signal", signal)
 
-	// https://docs.docker.com/engine/reference/commandline/kill/#description defaults to KILL.
-	signalnum := 0x9
+	// https://github.com/opencontainers/runc/blob/release-1.1/kill.go#L45
+	// the runc implementation uses SIGTERM by default.
+	// The spec doesn't mention a default.
+	signalnum := 0xf
 	signal = strings.TrimPrefix(signal, "SIG")
 	switch signal {
 	case "KILL":
@@ -365,6 +367,7 @@ func handleContainerKill(w http.ResponseWriter, r *http.Request, index uint8) {
 	container.Process.Signal(syscall.Signal(signalnum))
 
 	w.WriteHeader(200)
+	return
 }
 
 func handleContainerLogs(w http.ResponseWriter, r *http.Request, index uint8) {
