@@ -16,14 +16,20 @@ func main() {
 		Short: "cradle vmm host simulator",
 	}
 
+	var vfsVolumes []string
+	var blockVolumes []string
 	cc := &cobra.Command{
 		Use:   "summon [cacheDir] [dockerImage]",
 		Short: "prepare a local checkout for launch",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			summon(args[0], args[1])
+			summon(args[0], args[1], vfsVolumes, blockVolumes)
 		},
 	}
+
+	cc.Flags().StringArrayVar(&vfsVolumes, "fs", []string{}, "add a file system volume to this container path")
+	cc.Flags().StringArrayVar(&blockVolumes, "block", []string{}, "add a block volume to this container path")
+
 	rootCmd.AddCommand(cc)
 
 	cc = &cobra.Command{

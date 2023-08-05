@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func summon(cacheDir string, dockerImage string) {
+func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolumes []string) {
 
 	err := os.MkdirAll(cacheDir, 0755)
 	if err != nil {
@@ -42,6 +42,11 @@ func summon(cacheDir string, dockerImage string) {
 	}
 
 	err = os.MkdirAll(cacheDir+"/files", 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.MkdirAll(cacheDir+"/volumes", 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -70,6 +75,64 @@ func summon(cacheDir string, dockerImage string) {
 		},
 	}
 
+	// create volumes
+
+	for i, v := range fileVolumes {
+
+		id := fmt.Sprintf("vol%d", i)
+
+		err = os.MkdirAll(filepath.Join(cacheDir, "volumes", id), 0755)
+		if err != nil {
+			panic(err)
+		}
+		launchConfig.Pod.Volumes = append(launchConfig.Pod.Volumes, spec.Volume{
+			ID:        id,
+			Name:      id,
+			Class:     "nfs",
+			Transport: "virtiofs",
+		})
+
+		launchConfig.Pod.Containers[0].VolumeMounts = append(launchConfig.Pod.Containers[0].VolumeMounts,
+			spec.VolumeMount{
+				VolumeName: id,
+				VolumePath: "/",
+				GuestPath:  v,
+			})
+	}
+
+	for i, v := range blockVolumes {
+
+		id := fmt.Sprintf("vol%d", i)
+
+		block := filepath.Join(cacheDir, "volumes", id)
+		wi, err := os.Create(block)
+		if err != nil {
+			panic(err)
+		}
+		defer wi.Close()
+
+		err = wi.Truncate(1024 * 1024 * 1024 * 10)
+		if err != nil {
+			panic(err)
+		}
+
+		launchConfig.Pod.Volumes = append(launchConfig.Pod.Volumes, spec.Volume{
+			ID:    fmt.Sprintf("vol%d", i),
+			Name:  fmt.Sprintf("vol%d", i),
+			Class: "lv",
+		})
+
+		launchConfig.Pod.Containers[0].VolumeMounts = append(launchConfig.Pod.Containers[0].VolumeMounts,
+			spec.VolumeMount{
+				VolumeName: id,
+				VolumePath: "/",
+				GuestPath:  v,
+			})
+
+	}
+
+	// config.json for kcradle run
+
 	f, err := os.Create(cacheDir + "/config/launch.json")
 	if err != nil {
 		panic(err)
@@ -79,29 +142,6 @@ func summon(cacheDir string, dockerImage string) {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	enc.Encode(&launchConfig)
-
-	// config.tar mounted to the vm
-
-	js, err := json.Marshal(&launchConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	f, err = os.Create(filepath.Join(cacheDir, "files", "config.tar"))
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	tw := tar.NewWriter(f)
-	defer tw.Close()
-
-	tw.WriteHeader(&tar.Header{
-		Name: "launch.json",
-		Mode: 0644,
-		Size: int64(len(js)),
-	})
-	tw.Write(js)
 
 	// cache images
 
@@ -167,6 +207,7 @@ ip6tables -I FORWARD -i $iff -j ACCEPT
 ip6tables -I FORWARD -o $iff -j ACCEPT
 ip6tables -t nat -C POSTROUTING -o wlp3s0 -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o wlp3s0 -j MASQUERADE
 ip6tables -t nat -C POSTROUTING -o host -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o host -j MASQUERADE
+ip6tables -t nat -C POSTROUTING -o enp6s0 -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o enp6s0 -j MASQUERADE
 
 ip addr add 10.0.2.2/24 dev $iff
 
@@ -175,6 +216,7 @@ iptables -I FORWARD -i $iff -j ACCEPT
 iptables -I FORWARD -o $iff -j ACCEPT
 iptables -t nat -C POSTROUTING -o wlp3s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o wlp3s0 -j MASQUERADE
 iptables -t nat -C POSTROUTING -o host -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o host -j MASQUERADE
+iptables -t nat -C POSTROUTING -o enp6s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o enp6s0 -j MASQUERADE
 `)
 
 	os.Chmod(filepath.Join(cacheDir, "tap.sh"), 0755)

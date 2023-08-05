@@ -6,6 +6,7 @@
 package main
 
 import (
+	"archive/tar"
 	"encoding/json"
 	"fmt"
 	"github.com/kraudcloud/cradle/spec"
@@ -16,9 +17,12 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 )
+
+var murderProcs = []*os.Process{}
 
 func run(cacheDir string) {
 
@@ -36,6 +40,28 @@ func run(cacheDir string) {
 	if err != nil {
 		panic(err)
 	}
+
+	// package up config.tar
+	js, err := json.Marshal(&launchConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	f, err = os.Create(filepath.Join(cacheDir, "files", "config.tar"))
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	tw := tar.NewWriter(f)
+	defer tw.Close()
+
+	tw.WriteHeader(&tar.Header{
+		Name: "launch.json",
+		Mode: 0644,
+		Size: int64(len(js)),
+	})
+	tw.Write(js)
 
 	vm := vmm.New(launchConfig)
 
@@ -79,6 +105,11 @@ func run(cacheDir string) {
 		sig := <-sigc
 		fmt.Println("TERMINATING")
 		vm.Shutdown(fmt.Sprintf("signal %s", sig))
+
+		for _, p := range murderProcs {
+			p.Kill()
+		}
+
 		go func() {
 			<-sigc
 			cmd.Process.Kill()
@@ -159,19 +190,30 @@ func qemuArgs(config *spec.Launch) []string {
 	for i, volume := range config.Pod.Volumes {
 
 		switch volume.Class {
-		case "rbd":
+		case "lv":
 
-			fileName := fmt.Sprintf("volume.%s.img", volume.ID)
+			fileName := volume.ID
 			r = append(r,
 				"-drive", "format=raw,aio=threads,file=volumes/"+fileName+",readonly=off,if=none,id=drive-virtio-volume-"+volume.ID,
-				"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id="+fileName,
+				"-device", "scsi-hd,drive=drive-virtio-volume-"+volume.ID+",device_id=volume."+fileName+".img",
 			)
 		default:
-			//fileName := fmt.Sprintf("volume.%s", volume.ID)
+			fileName := fmt.Sprintf("volume.%s", volume.ID)
+
+			c := exec.Command("/usr/lib/virtiofsd",
+				"--socket-path", fmt.Sprintf("files/%s", fileName),
+				"--shared-dir", fmt.Sprintf("volumes/%s", volume.ID))
+
+			c.Stdout = os.Stdout
+			c.Stderr = os.Stderr
+			c.Start()
+
+			murderProcs = append(murderProcs, c.Process)
+
 			r = append(r,
 				// "-fsdev", "local,id=fsdev-"+volume.ID+",path="+fileName+",security_model=mapped-xattr",
 				// "-device", fmt.Sprintf("virtio-9p-device,fsdev=fsdev-%s,mount_tag=fs%d", volume.ID, i),
-				"-chardev", fmt.Sprintf("socket,id=fs.%d,path=/tmp/vhostqemu", i),
+				"-chardev", fmt.Sprintf("socket,id=fs.%d,path=files/%s", i, fileName),
 				"-device", fmt.Sprintf("vhost-user-fs-device,queue-size=1024,chardev=fs.%d,tag=fs%d", i, i),
 			)
 		}
