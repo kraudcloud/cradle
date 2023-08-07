@@ -47,6 +47,12 @@ type Volume struct {
 
 	// hvm transport mode
 	Transport string `json:"transport"`
+
+	// local storage pool
+	Filesystem string `json:"filesystem"`
+
+	// expected size in bytes
+	Size uint64 `json:"size"`
 }
 
 // the container spec

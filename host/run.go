@@ -32,7 +32,7 @@ func run(cacheDir string) {
 	fmt.Println("DOCKER_HOST='tcp://[fddd::2]:1'")
 
 	var launchConfig = &spec.Launch{}
-	f, err := os.Open(cacheDir + "/config/launch.json")
+	f, err := os.Open("config/launch.json")
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func run(cacheDir string) {
 		panic(err)
 	}
 
-	f, err = os.Create(filepath.Join(cacheDir, "files", "config.tar"))
+	f, err = os.Create(filepath.Join("files", "config.tar"))
 	if err != nil {
 		panic(err)
 	}
