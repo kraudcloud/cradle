@@ -21,6 +21,8 @@ import (
 
 func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolumes []string) {
 
+
+
 	err := os.MkdirAll(cacheDir, 0755)
 	if err != nil {
 		panic(err)
@@ -62,7 +64,7 @@ func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolu
 		Version: 2,
 		ID:      "6115c213-a87a-4206-9b99-0d0235ac560f",
 		Pod: &spec.Pod{
-			Name:       dockerImage,
+			Name:       strings.ReplaceAll(dockerImage, "/", "_"),
 			Namespace:  "default",
 			Containers: []spec.Container{*cj},
 		},
@@ -329,11 +331,11 @@ func extractDocker(ctx context.Context, cacheDir string, ref string) (*spec.Cont
 	}
 
 	var r = &spec.Container{
-		ID:       config1.Container,
-		Name:     ref,
+		ID:       "217c2d60-8b4f-4b1d-ba79-144aa0c31e6c",
+		Name:	  strings.ReplaceAll(ref, "/", "_"),
 		Hostname: "good_morning",
 		Image: spec.Image{
-			ID: config1.Container,
+			ID: "2de815d9-76ea-4a63-ab54-9bba7cca78a3",
 		},
 		Process: spec.Process{
 			Cmd:     config1.Config.Cmd,

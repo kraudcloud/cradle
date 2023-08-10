@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/kraudcloud/cradle/spec"
+	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"os/exec"
@@ -92,14 +93,15 @@ func main_runc() {
 		}
 	}()
 
-	// force /dev/console to be the pts, so we can read it into the container logs
-	pathToTtty, _ := os.Readlink("/proc/self/fd/0")
-	if strings.HasPrefix(pathToTtty, "/dev/pts/") {
-		os.Remove(root + "/dev/console")
-		os.Symlink(pathToTtty, root+"/dev/console")
-
-		os.Remove(root + "/dev/tty")
-		os.Symlink(pathToTtty, root+"/dev/tty")
+	// redirect /dev/console to the pts, so we can read it into the container logs
+	// specifically systemd only uses /dev/console
+	ptfd, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err == nil {
+		defer ptfd.Close()
+		err := unix.IoctlSetInt(int(ptfd.Fd()), syscall.TIOCCONS, 0)
+		if err != nil {
+			log.Error("TIOCCONS failed: ", err)
+		}
 	}
 
 	// /dev/shm
@@ -272,7 +274,7 @@ func main_runc() {
 		flatenv = append(flatenv, k+"="+v)
 	}
 
-	err := syscall.Chroot(root)
+	err = syscall.Chroot(root)
 	if err != nil {
 		log.Errorf("runc: chroot failed: %s", err)
 		return
