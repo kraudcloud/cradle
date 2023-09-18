@@ -381,6 +381,11 @@ func (c *Container) mount() error {
 			if err != nil {
 				return fmt.Errorf("mount volume %s: %w", vp, err)
 			}
+
+		} else {
+			// docker mounts volumes as uid 1000, and some containers rely on that. scary
+			vp := filepath.Join("/var/lib/docker/volumes/", m.VolumeName, "_data", m.VolumePath)
+			os.Chown(vp, 1000, 1000)
 		}
 	}
 

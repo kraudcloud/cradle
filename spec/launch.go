@@ -199,6 +199,9 @@ type Network struct {
 	TransitIp4 string `json:"tip4,omitempty"`
 	TransitGw4 string `json:"tgw4,omitempty"`
 
+	TransitIp6 string `json:"tip6,omitempty"`
+	TransitGw6 string `json:"tgw6,omitempty"`
+
 	PublicIPs []string `json:"public_ips,omitempty"`
 }
 

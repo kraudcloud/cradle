@@ -1,4 +1,4 @@
-VARIANT=default
+VARIANT=snp
 
 all: kcradle pkg.tar
 
@@ -44,9 +44,7 @@ pkg-$(VARIANT)/pflash0: build/.firmware-$(VARIANT)
 build/linux-snp:
 	mkdir -p build
 	cd build &&\
-	git clone https://github.com/AMDESE/linux.git  linux-snp --single-branch --branch snp-host-latest 
-	cd linux-snp &&\
-	git checkout snp-host-latest
+	git clone https://github.com/kraudcloud/amd-snp-kernel.git linux-snp --single-branch --branch snp-host-latest-tmp
 
 build/linux-default:
 	mkdir -p build
@@ -61,12 +59,16 @@ pkg-$(VARIANT)/kernel: build/linux-$(VARIANT) kernel-config-x86_64
 	if [ "$(VARIANT)" = "snp" ]; \
 	then \
 	cd build/linux-$(VARIANT) &&\
+	cp ../../kernel-config-x86_64-snp .config &&\
 	./scripts/config --enable  EXPERT &&\
 	./scripts/config --enable  DEBUG_INFO &&\
 	./scripts/config --enable  AMD_MEM_ENCRYPT &&\
 	./scripts/config --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT &&\
-	./scripts/config --enable  KVM_AMD_SEV &&\
+	./scripts/config --enable  KVM &&\
+	./scripts/config --enable  KVM_AMD &&\
+	./scripts/config --enable  PCI &&\
 	./scripts/config --enable  CRYPTO_DEV_CCP_DD &&\
+	./scripts/config --enable  KVM_AMD_SEV &&\
 	./scripts/config --disable SYSTEM_TRUSTED_KEYS &&\
 	./scripts/config --disable SYSTEM_REVOCATION_KEYS &&\
 	./scripts/config --enable  SEV_GUEST &&\

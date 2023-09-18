@@ -71,6 +71,10 @@ func (e *Exec) Run(dout io.WriteCloser, din io.Reader) {
 			fmt.Fprintf(dout, "no such container\n")
 			return
 		}
+		if container.Process == nil {
+			fmt.Fprintf(dout, "no such container\n")
+			return
+		}
 
 		if e.WorkingDir == "" {
 			e.WorkingDir = container.Spec.Process.Workdir

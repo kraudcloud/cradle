@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"time"
 )
 
 func network() {
@@ -60,7 +61,7 @@ func network() {
 		log.Error("netlink.fabric.LinkByName: ", err)
 	}
 
-	netlink.LinkSetName(eth0, "vpc")
+	//netlink.LinkSetName(eth0, "vpc")
 
 	// set link up
 	err = netlink.LinkSetUp(eth0)
@@ -107,15 +108,66 @@ func network() {
 		log.Error("netlink.fabric.RouteAdd6: ", err)
 	}
 
+
+
+	// vpc default route
+	//TODO dont hardcode that. it's a quick hack until we have dual ifs
 	route := netlink.Route{
 		LinkIndex: eth0.Attrs().Index,
 		Gw:        gateway6,
+		Dst:       &net.IPNet{
+			IP:		net.ParseIP("fdfd::"),
+			Mask:	net.CIDRMask(16, 128),
+		},
+		//Src:		net.ParseIP(CONFIG.Network.FabricIp6),
+		//Scope:		netlink.SCOPE_UNIVERSE,
 	}
-
 	err = netlink.RouteAdd(&route)
 	if err != nil {
-		log.Error("netlink.fabric.RouteAdd6: ", err)
+		log.Error("netlink.fabric.RouteAdd6 (vpc): ", err)
 	}
+
+
+	// internet default route
+	route = netlink.Route{
+		LinkIndex:	eth0.Attrs().Index,
+		Gw:			gateway6,
+		Src:		net.ParseIP(CONFIG.Network.FabricIp6),
+		Scope:		netlink.SCOPE_UNIVERSE,
+	}
+
+	for _, ip := range CONFIG.Network.PublicIPs {
+		addr, err := netlink.ParseAddr(ip)
+		if err != nil {
+			log.Errorf("cannot parse public ip: (%s): %s", ip, err)
+			continue
+		}
+		if addr.IP.To4() != nil {
+			continue
+		}
+		err = netlink.AddrAdd(eth0, addr)
+		if err != nil {
+			log.Errorf("netlink.AddrAdd (%s): %s", addr.String(), err)
+		}
+		route.Src = addr.IP
+		break
+	}
+
+
+	// src is broken in golang netlink https://github.com/vishvananda/netlink/issues/912
+
+	var droute = route
+	go func() {
+		// wtf
+		time.Sleep(1 * time.Second)
+
+		err = netlink.RouteAdd(&droute)
+		if err != nil {
+			log.Error("netlink.fabric.RouteAdd6 (default): ", err)
+		}
+
+	}()
+
 
 	// Set up the IPv4 host transit address
 
@@ -165,7 +217,7 @@ func network() {
 	eth1, err := netlink.LinkByName("eth1")
 	if err == nil {
 
-		netlink.LinkSetName(eth1, "public")
+		netlink.LinkSetName(eth1, "pub")
 
 		// set link up
 		err = netlink.LinkSetUp(eth1)
