@@ -119,8 +119,8 @@ func (c *Container) stop(reason string) {
 		case <-terminated:
 		case <-time.After(15 * time.Second):
 
-			vmm(spec.YKContainer(uint8(c.Index), spec.YC_SUB_STDERR),
-				[]byte("container did not terminate within 15 seconds, killing it"))
+			//vmm(spec.YKContainer(uint8(c.Index), spec.YC_SUB_STDERR),
+			//	[]byte("container did not terminate within 15 seconds, killing it"))
 			log.Println("container", c.Spec.Name, "did not terminate after 15 seconds, killing")
 			c.Process.Signal(syscall.SIGKILL)
 		}

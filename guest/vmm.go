@@ -2,6 +2,8 @@
 
 package main
 
+/*
+
 import (
 	"encoding/json"
 	"fmt"
@@ -160,3 +162,5 @@ func (w VmmWriter) Close() error {
 	vmm(w.CloseKey, []byte{})
 	return nil
 }
+
+*/

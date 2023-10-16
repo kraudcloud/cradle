@@ -30,12 +30,7 @@ func main_init() {
 	makedev()
 
 	var wg sync.WaitGroup
-	wg.Add(3)
-
-	go func() {
-		vmminit()
-		wg.Done()
-	}()
+	wg.Add(2)
 
 	go func() {
 		mountnvme()
@@ -46,7 +41,6 @@ func main_init() {
 		config()
 		network()
 		podPrepare()
-		go vmm3()
 		wg.Done()
 	}()
 
@@ -54,8 +48,12 @@ func main_init() {
 
 	services()
 	startDns()
+	go vmm3()
+
+
 	rebind46()
 	vdocker()
+
 	extpreboot()
 
 	wg.Add(4)

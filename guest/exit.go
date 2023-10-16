@@ -5,7 +5,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/kraudcloud/cradle/spec"
+	//"github.com/kraudcloud/cradle/spec"
 	"os"
 	"strings"
 	"syscall"
@@ -39,7 +39,7 @@ func exit(err error) {
 	log.Errorf("shutdown reason: %s\n", err.Error())
 	fmt.Printf("shutdown reason: %s\n", err.Error())
 
-	vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
+	//vmm(spec.YC_KEY_SHUTDOWN, []byte(err.Error()))
 
 	// cmd := exec.Command("/bin/fsfreeze", "--freeze", "/cache/")
 	// cmd.Stdout = os.Stdout
