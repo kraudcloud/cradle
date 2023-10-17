@@ -203,6 +203,7 @@ type Network struct {
 	TransitGw6 string `json:"tgw6,omitempty"`
 
 	PublicIPs []string `json:"public_ips,omitempty"`
+	OverlayIPs []string `json:"overlay_ips,omitempty"`
 }
 
 type Role struct {
