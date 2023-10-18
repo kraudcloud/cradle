@@ -53,6 +53,7 @@ func vmm3() {
 			if st.V != nil {
 				UpdateDNS(st.V)
 				UpdateServices(st.V)
+				UpdateOverlay(st.V)
 				continue
 			}
 		}
@@ -61,9 +62,12 @@ func vmm3() {
 	for {
 		time.Sleep(time.Second)
 
+		// overlayRoutes := networkListOverlayRoutes()
+
 		report := map[string]interface{}{
 			"Pod": map[string]interface{}{
 				"IP6": CONFIG.Network.FabricIp6,
+				// "OverlayRoutes": overlayRoutes,
 			},
 		}
 

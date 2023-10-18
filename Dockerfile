@@ -21,4 +21,4 @@ run	ln -sf /init /sbin/init
 run	ln -sf /init /bin/runc
 run	ln -sf /init /bin/nsenter
 
-run apk add --no-cache e2fsprogs xfsprogs cryptsetup nftables rsync
+run apk add --no-cache iproute2 e2fsprogs xfsprogs cryptsetup nftables rsync

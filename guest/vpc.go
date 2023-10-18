@@ -19,9 +19,16 @@ type Service struct {
 }
 
 type Pod struct {
-	Names     []string `json:"n"`
-	Namespace string   `json:"d"`
-	IP6       string   `json:"6"`
+	Names     []string  `json:"n"`
+	Namespace string    `json:"d"`
+	IP6       string    `json:"6"`
+	Overlays  []Overlay `json:"o"`
+}
+
+type Overlay struct {
+	AID string `json:"i"`
+	IP4 string `json:"4"`
+	IP6 string `json:"6"`
 }
 
 type Vpc struct {

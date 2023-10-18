@@ -190,7 +190,6 @@ type ConfigMount struct {
 }
 
 type Network struct {
-
 	Nameservers []string `json:"nameservers,omitempty"`
 
 	FabricIp6 string `json:"fip6,omitempty"`
@@ -203,10 +202,9 @@ type Network struct {
 	TransitGw6 string `json:"tgw6,omitempty"`
 
 	PublicIPs []string `json:"public_ips,omitempty"`
-	OverlayIPs []string `json:"overlay_ips,omitempty"`
 }
 
 type Role struct {
-	Api []string `json:"api,omitempty"`
-	Token string `json:"token,omitempty"`
+	Api   []string `json:"api,omitempty"`
+	Token string   `json:"token,omitempty"`
 }

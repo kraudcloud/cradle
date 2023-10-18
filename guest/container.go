@@ -245,12 +245,9 @@ func main_runc() {
 		}
 	}
 
-
 	// bind mount /lib/modules so userspace can load more stuff
 	os.MkdirAll(root+"/lib/modules", 0755)
-	syscall.Mount("/lib/modules", root+"/lib/modules", "", syscall.MS_BIND | syscall.MS_RDONLY , "")
-
-
+	syscall.Mount("/lib/modules", root+"/lib/modules", "", syscall.MS_BIND|syscall.MS_RDONLY, "")
 
 	// set hostname
 	if container.Hostname == "" {

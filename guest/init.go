@@ -50,7 +50,6 @@ func main_init() {
 	startDns()
 	go vmm3()
 
-
 	rebind46()
 	vdocker()
 
