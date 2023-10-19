@@ -20,6 +20,7 @@ var upstreams = []string{
 type dnsrr struct {
 	SrvV6 []net.IP
 	PodV6 []net.IP
+	PodOverlay4 []net.IP
 }
 
 type Dns struct {
@@ -77,15 +78,25 @@ func UpdateDNS(vv *Vpc) {
 				DNS.lookup[n] = &dnsrr{}
 			}
 
-			// parsed4 := net.ParseIP(pod.IP4)
-			// if parsed4 != nil {
-			// 	DNS.lookup[n].PodV4 = []net.IP{parsed4}
-			// }
-
 			parsed6 := net.ParseIP(pod.IP6)
 			if parsed6 != nil {
 				DNS.lookup[n].PodV6 = []net.IP{parsed6}
 			}
+
+			ov4 := []net.IP{}
+			for _, ov := range pod.Overlays {
+				if ov.IP4 != "" {
+					parsed, _ , err := net.ParseCIDR(ov.IP4)
+					if err != nil {
+						parsed = net.ParseIP(ov.IP4)
+					}
+					if parsed != nil {
+						ov4 = append(ov4, parsed)
+					}
+				}
+			}
+
+			DNS.lookup[n].PodOverlay4 = ov4
 		}
 	}
 
@@ -116,6 +127,26 @@ func (DNS *Dns) ResolveAAAA(name string) []net.IP {
 			return rr.SrvV6
 		}
 		return rr.PodV6
+	}
+
+	return nil
+}
+
+
+func (DNS *Dns) ResolveA(name string) []net.IP {
+
+	DNS.lock.RLock()
+	defer DNS.lock.RUnlock()
+
+	q := name
+	if strings.Count(q, ".") == 1 {
+		q = q + CONFIG.Pod.Namespace + "."
+	}
+
+	if rr, ok := DNS.lookup[q]; ok {
+		if len(rr.PodOverlay4) != 0 {
+			return rr.PodOverlay4
+		}
 	}
 
 	return nil
@@ -186,6 +217,18 @@ func startDns() {
 							AAAA: rr.PodV6[0],
 						})
 					}
+					for _, ov4 := range rr.PodOverlay4 {
+						m.Answer = append(m.Answer, &dns.A{
+							Hdr: dns.RR_Header{
+								Name:   k,
+								Rrtype: dns.TypeA,
+								Class:  dns.ClassINET,
+								Ttl:    1,
+							},
+							A: ov4,
+						})
+					}
+
 				}
 
 				w.WriteMsg(m)
@@ -195,8 +238,30 @@ func startDns() {
 
 		} else if len(r.Question) == 1 && r.Question[0].Qtype == dns.TypeA {
 
-			// if we have an AAAA record, we must return an empty A record
-			ips := DNS.ResolveAAAA(r.Question[0].Name)
+			ips := DNS.ResolveA(r.Question[0].Name)
+			if len(ips) > 0 {
+				m := new(dns.Msg)
+				m.SetReply(r)
+				m.Answer = []dns.RR{}
+
+				for _, ip := range ips {
+					m.Answer = append(m.Answer, &dns.A{
+						Hdr: dns.RR_Header{
+							Name:   r.Question[0].Name,
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    1,
+						},
+						A: ip,
+					})
+				}
+				w.WriteMsg(m)
+				return
+			}
+
+			// if we know that name at all, we must at least return an empty A record
+			// TODO why? is this a glibc bug workaround?
+			ips = DNS.ResolveAAAA(r.Question[0].Name)
 			if len(ips) > 0 {
 				m := new(dns.Msg)
 				m.SetReply(r)

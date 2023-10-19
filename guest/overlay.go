@@ -102,6 +102,8 @@ func withMask(in string) string {
 	return in + "/32"
 }
 
+var overlayMemberships = map[string]string{}
+
 func UpdateOverlay(vv *Vpc) {
 
 	log.Infof("DEBUG UpdateOverlay %d", len(vv.Pods))
