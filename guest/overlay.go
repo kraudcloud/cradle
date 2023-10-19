@@ -12,31 +12,37 @@ import (
 	"strings"
 )
 
-func networkMakeOverlay(ifname string, net4 string, net6 string) (netlink.Link, error) {
+func networkOverlay() {
+	//ip link add overlay type ip6tnl external
+	o, err := exec.Command("/sbin/ip", "link", "add", "overlay", "type", "ip6tnl", "external").CombinedOutput()
 
-	eth, err := netlink.LinkByName(ifname)
+	// err := netlink.LinkAdd(&netlink.Ip6tnl{
+	// 	LinkAttrs: netlink.LinkAttrs{
+	// 		Name: "overlay",
+	// 	},
+	//  TODO dunno how to set externally controlled flag
+	// })
 	if err != nil {
+		log.Error(fmt.Errorf("failed to create overlay: %w : %s", err, string(o)))
+		return
+	}
 
-		//ip link add overlay type ip6tnl external
-		o, err := exec.Command("/sbin/ip", "link", "add", ifname, "type", "ip6tnl", "external").CombinedOutput()
-
-		// err := netlink.LinkAdd(&netlink.Ip6tnl{
-		// 	LinkAttrs: netlink.LinkAttrs{
-		// 		Name: "overlay",
-		// 	},
-		//  TODO dunno how to set externally controlled flag
-		// })
-		if err != nil {
-			return nil, fmt.Errorf("failed to create overlay (%s): %w : %s", ifname, err, string(o))
-		}
-
-		eth, err = netlink.LinkByName(ifname)
-		if err != nil {
-			return nil, fmt.Errorf("netlink.LinkByName (%s): %w", ifname, err)
-		}
+	eth, err := netlink.LinkByName("overlay")
+	if err != nil {
+		log.Error(fmt.Errorf("netlink.LinkByName (overlay): %w", err))
+		return
 	}
 
 	netlink.LinkSetUp(eth)
+
+}
+
+func networkMakeOverlay(net4 string, net6 string) (netlink.Link, error) {
+
+	eth, err := netlink.LinkByName("overlay")
+	if err != nil {
+		return nil, fmt.Errorf("netlink.LinkByName (overlay): %w", err)
+	}
 
 	if net4 != "" {
 
@@ -107,7 +113,6 @@ func UpdateOverlay(vv *Vpc) {
 	}
 	myshortid := base64.RawURLEncoding.EncodeToString(myuuid[:])
 
-	ifname2index := make(map[string]int)
 	hasRoutes := make(map[string]netlink.Route)
 
 	for shid, pod := range vv.Pods {
@@ -117,17 +122,13 @@ func UpdateOverlay(vv *Vpc) {
 
 		for _, overlay := range pod.Overlays {
 
-			ifname := "vo." + overlay.AID
-
-			eth, err := networkMakeOverlay(ifname, overlay.IP4, overlay.IP6)
+			eth, err := networkMakeOverlay(overlay.IP4, overlay.IP6)
 			if err != nil {
 				if err != nil {
 					log.Error(err)
 					continue
 				}
 			}
-
-			ifname2index[ifname] = eth.Attrs().Index
 
 			routes, err := netlink.RouteList(eth, netlink.FAMILY_V6)
 			if err != nil {
@@ -164,28 +165,18 @@ func UpdateOverlay(vv *Vpc) {
 
 		for _, overlay := range pod.Overlays {
 
-			ifname := "vo." + overlay.AID
-			ifindex := ifname2index[ifname]
-
-			_, err := networkMakeOverlay(ifname, "", "")
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
 			if overlay.IP4 != "" {
 				dst := withMask(overlay.IP4)
 				keepRoutes[dst] = true
 
-				if hasRoutes[overlay.IP4].LinkIndex != ifindex ||
-					hasRoutes[overlay.IP4].Gw == nil ||
+				if hasRoutes[overlay.IP4].Gw == nil ||
 					hasRoutes[overlay.IP4].Gw.String() != pod.IP6 {
 
 					o, err := exec.Command("/sbin/ip", "route", "replace",
-						dst, "dev", ifname, "encap", "ip6", "dst", pod.IP6, "proto", "10").CombinedOutput()
+						dst, "dev", "overlay", "encap", "ip6", "dst", pod.IP6, "proto", "10").CombinedOutput()
 
 					if err != nil {
-						log.Error("netlink.RouteReplace ("+ifname+") : ", err, string(o))
+						log.Error("netlink.RouteReplace (overlay) : ", err, string(o))
 					}
 				}
 			}
@@ -194,19 +185,16 @@ func UpdateOverlay(vv *Vpc) {
 				dst := withMask(overlay.IP4)
 				keepRoutes[dst] = true
 
-				if hasRoutes[overlay.IP6].LinkIndex != ifindex ||
-					hasRoutes[overlay.IP6].Gw == nil ||
+				if hasRoutes[overlay.IP6].Gw == nil ||
 					hasRoutes[overlay.IP6].Gw.String() != pod.IP6 {
 
 					o, err := exec.Command("/sbin/ip", "-6", "route", "replace",
-						dst, "dev", ifname, "encap", "ip6", "dst", pod.IP6, "proto", "10").CombinedOutput()
+						dst, "dev", "overlay", "encap", "ip6", "dst", pod.IP6, "proto", "10").CombinedOutput()
 
 					if err != nil {
-						log.Error("netlink.RouteReplace ("+ifname+") : ", err, string(o))
+						log.Error("netlink.RouteReplace (overlay) : ", err, string(o))
 					}
-
 				}
-
 			}
 		}
 	}

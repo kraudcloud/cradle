@@ -20,6 +20,7 @@ func network() {
 	networkVpc()
 	networkV4HostTransit()
 	networkPublic()
+	networkOverlay()
 	networkNameservers()
 }
 
