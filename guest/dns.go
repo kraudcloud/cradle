@@ -18,8 +18,8 @@ var upstreams = []string{
 }
 
 type dnsrr struct {
-	SrvV6 []net.IP
-	PodV6 []net.IP
+	SrvV6       []net.IP
+	PodV6       []net.IP
 	PodOverlay4 []net.IP
 }
 
@@ -86,7 +86,7 @@ func UpdateDNS(vv *Vpc) {
 			ov4 := []net.IP{}
 			for _, ov := range pod.Overlays {
 				if ov.IP4 != "" {
-					parsed, _ , err := net.ParseCIDR(ov.IP4)
+					parsed, _, err := net.ParseCIDR(ov.IP4)
 					if err != nil {
 						parsed = net.ParseIP(ov.IP4)
 					}
@@ -131,7 +131,6 @@ func (DNS *Dns) ResolveAAAA(name string) []net.IP {
 
 	return nil
 }
-
 
 func (DNS *Dns) ResolveA(name string) []net.IP {
 

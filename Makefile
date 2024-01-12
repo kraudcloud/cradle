@@ -49,9 +49,9 @@ build/linux-snp:
 build/linux-default:
 	mkdir -p build
 	cd build &&\
-	git clone https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux linux-default --single-branch --branch linux-6.0.y &&\
+	git clone https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux linux-default --single-branch --branch linux-6.6.y &&\
 	cd linux-default &&\
-	git checkout v6.0.18
+	git checkout v6.6.11
 
 pkg-$(VARIANT)/kernel: build/linux-$(VARIANT) kernel-config-x86_64
 	cd build/linux-$(VARIANT) &&\
@@ -83,16 +83,18 @@ pkg-$(VARIANT)/kernel: build/linux-$(VARIANT) kernel-config-x86_64
 	make olddefconfig &&\
 	make -j8
 	cp build/linux-$(VARIANT)/arch/x86_64/boot/bzImage pkg-$(VARIANT)/kernel
-	mkdir -p build/initrd
-	cd build/linux-$(VARIANT) &&\
-	make modules -j8 && make INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=../initrd modules_install
 
 build/initrd/init: Dockerfile .PHONY
 	rm -rf build/initrd
 	mkdir -p build/initrd
 	docker buildx build . -o - | tar -x -C build/initrd
 
-pkg-$(VARIANT)/initrd: build/initrd/init pkg-$(VARIANT)/kernel
+build/initrd/lib/modules:  pkg-$(VARIANT)/kernel
+	mkdir -p build/initrd
+	cd build/linux-$(VARIANT) &&\
+	make modules -j8 && make INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=../initrd modules_install
+
+pkg-$(VARIANT)/initrd: build/initrd/init build/initrd/lib/modules
 	( cd build/initrd && find . | cpio -o -H newc ) > pkg-$(VARIANT)/initrd
 
 test/config.tar: launch/launch.json

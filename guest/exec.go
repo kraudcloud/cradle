@@ -80,8 +80,8 @@ func (e *Exec) Run(dout io.WriteCloser, din io.Reader) {
 			e.WorkingDir = container.Spec.Process.Workdir
 		}
 
-		cmd = exec.Command("/bin/nsenter", append([]string{
-			fmt.Sprintf("%d", container.Process.Pid),
+		cmd = exec.Command("/proc/self/exe", append([]string{
+			"nsenter",
 			container.Spec.ID,
 			e.WorkingDir,
 			e.Cmd[0],
@@ -205,12 +205,21 @@ func (c *Exec) Resize(w uint16, h uint16) error {
 	return nil
 }
 
-func main_nsenter() {
+func main_nsenter(args []string) {
 
-	pid, err := strconv.Atoi(os.Args[1])
-	cid := os.Args[2]
-	wd := os.Args[3]
-	cmd := os.Args[4:]
+	cid := args[1]
+	wd := args[2]
+	cmd := args[3:]
+
+	pidstr, err := os.ReadFile(fmt.Sprintf("/cache/containers/%s/pid", cid))
+	if err != nil {
+		panic(fmt.Sprintf("failed to read pid: %v\n", err))
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(pidstr)))
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse pid: %v\n", err))
+	}
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -221,16 +230,9 @@ func main_nsenter() {
 	}
 	defer unix.Close(fd)
 
-	err = unix.Setns(fd, syscall.CLONE_NEWNS|syscall.CLONE_NEWUTS|syscall.CLONE_NEWIPC|syscall.CLONE_NEWPID)
+	err = unix.Setns(fd, syscall.CLONE_NEWNS|syscall.CLONE_NEWUTS|syscall.CLONE_NEWIPC|syscall.CLONE_NEWPID|syscall.CLONE_NEWCGROUP)
 	if err != nil {
 		panic(err)
-	}
-
-	var root = fmt.Sprintf("/cache/containers/%s/root", cid)
-
-	err = unix.Chroot(root)
-	if err != nil {
-		panic(fmt.Sprintf("Chroot: %s %v", root, err))
 	}
 
 	unix.Chdir(wd)

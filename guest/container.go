@@ -19,14 +19,16 @@ import (
 	"time"
 )
 
-func main_runc() {
+func main_run2(args []string) {
 
-	if len(os.Args) < 2 {
-		fmt.Println("usage: runc <container-id>")
+	var err error
+
+	if len(args) < 2 {
+		fmt.Println("usage: run2 <container-id>")
 		os.Exit(1)
 	}
 
-	id := os.Args[1]
+	id := args[1]
 
 	config()
 
@@ -41,61 +43,69 @@ func main_runc() {
 		panic("container not found")
 	}
 
-	var root = fmt.Sprintf("/cache/containers/%s/root", id)
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// we're already in a mount namespace from clone
+	// make all changes private
+	syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, "")
+
+	newroot := fmt.Sprintf("/cache/containers/%s/root", id)
+	oldroot := "/"
 
 	// /proc
-	os.MkdirAll(root+"/proc", 0777)
-	if err := syscall.Mount("none", root+"/proc", "proc", 0, ""); err != nil {
+	os.MkdirAll(newroot+"/proc", 0777)
+	if err := syscall.Mount("none", newroot+"/proc", "proc", 0, ""); err != nil {
 		log.Error("mount /proc failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/proc", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/proc", 0); err != nil {
 			log.Error("unmount /proc failed: ", err)
 		}
 	}()
 
 	// /sys
-	os.MkdirAll(root+"/sys", 0777)
-	if err := syscall.Mount("none", root+"/sys", "sysfs", 0, ""); err != nil {
+	os.MkdirAll(newroot+"/sys", 0777)
+	if err := syscall.Mount("none", newroot+"/sys", "sysfs", 0, ""); err != nil {
 		log.Error("mount /sys failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/sys", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/sys", 0); err != nil {
 			log.Error("unmount /sys failed: ", err)
 		}
 	}()
 
 	// /dev
-	os.MkdirAll(root+"/dev", 0777)
-	if err := syscall.Mount("none", root+"/dev", "devtmpfs", syscall.MS_NOSUID, ""); err != nil {
+	os.MkdirAll(newroot+"/dev", 0777)
+	if err := syscall.Mount("none", newroot+"/dev", "devtmpfs", syscall.MS_NOSUID, ""); err != nil {
 		log.Error("mount /dev failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/dev", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/dev", 0); err != nil {
 			log.Error("unmount /dev failed: ", err)
 		}
 	}()
 
-	os.Symlink("../proc/self/fd", root+"/dev/fd")
+	os.Symlink("../proc/self/fd", newroot+"/dev/fd")
 
 	// /dev/pts
 
-	os.MkdirAll(root+"/dev/pts", 0777)
-	// if err := syscall.Mount("none", root+"/dev/pts", "devpts", 0, ""); err != nil {
+	os.MkdirAll(newroot+"/dev/pts", 0777)
+	// if err := syscall.Mount("none", newroot+"/dev/pts", "devpts", 0, ""); err != nil {
 	// 	log.Error("mount /dev/pts failed: ", err)
 	// }
-	if err := syscall.Mount("/dev/pts", root+"/dev/pts", "", syscall.MS_BIND, ""); err != nil {
+	if err := syscall.Mount("/dev/pts", newroot+"/dev/pts", "", syscall.MS_BIND, ""); err != nil {
 		log.Error("mount /dev/pts failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/dev/pts", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/dev/pts", 0); err != nil {
 			log.Error("unmount /dev/pts failed: ", err)
 		}
 	}()
 
 	// redirect /dev/console to the pts, so we can read it into the container logs
 	// specifically systemd only uses /dev/console
-	ptfd, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	ptfd, err := os.OpenFile(newroot+"/dev/tty", os.O_RDWR, 0)
 	if err == nil {
 		defer ptfd.Close()
 		err := unix.IoctlSetInt(int(ptfd.Fd()), syscall.TIOCCONS, 0)
@@ -106,46 +116,46 @@ func main_runc() {
 
 	// /dev/shm
 
-	os.MkdirAll(root+"/dev/shm", 0777)
-	if err := syscall.Mount("none", root+"/dev/shm", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
+	os.MkdirAll(newroot+"/dev/shm", 0777)
+	if err := syscall.Mount("none", newroot+"/dev/shm", "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
 		log.Error("mount /dev/shm failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/dev/shm", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/dev/shm", 0); err != nil {
 			log.Error("unmount /dev/shm failed: ", err)
 		}
 	}()
 
 	// /dev/mqueue
 
-	os.MkdirAll(root+"/dev/mqueue", 0777)
-	if err := syscall.Mount("none", root+"/dev/mqueue", "mqueue", 0, ""); err != nil {
+	os.MkdirAll(newroot+"/dev/mqueue", 0777)
+	if err := syscall.Mount("none", newroot+"/dev/mqueue", "mqueue", 0, ""); err != nil {
 		log.Error("mount /dev/mqueue failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/dev/mqueue", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/dev/mqueue", 0); err != nil {
 			log.Error("unmount /dev/mqueue failed: ", err)
 		}
 	}()
 
 	// docker does not mount anything on /tmp or /run which some images abuse
-	os.MkdirAll(root+"/tmp", 0777)
-	os.Chmod(root+"/tmp", 0777)
+	os.MkdirAll(newroot+"/tmp", 0777)
+	os.Chmod(newroot+"/tmp", 0777)
 
-	os.MkdirAll(root+"/run", 0777)
-	os.Chmod(root+"/run", 0777)
+	os.MkdirAll(newroot+"/run", 0777)
+	os.Chmod(newroot+"/run", 0777)
 
-	os.Symlink("../run", root+"/var/run")
-	os.MkdirAll(root+"/run/lock", 0777)
-	os.Symlink("../run/lock", root+"/var/lock")
+	os.Symlink("../run", newroot+"/var/run")
+	os.MkdirAll(newroot+"/run/lock", 0777)
+	os.Symlink("../run/lock", newroot+"/var/lock")
 
 	// /sys/fs/cgroup
-	os.MkdirAll(root+"/sys/fs/cgroup", 0777)
-	if err := syscall.Mount("none", root+"/sys/fs/cgroup", "cgroup2", syscall.MS_NOSUID|syscall.MS_NOEXEC|syscall.MS_RELATIME, ""); err != nil {
+	os.MkdirAll(newroot+"/sys/fs/cgroup", 0777)
+	if err := syscall.Mount("none", newroot+"/sys/fs/cgroup", "cgroup2", syscall.MS_NOSUID|syscall.MS_NOEXEC|syscall.MS_RELATIME, ""); err != nil {
 		log.Error("mount /sys/fs/cgroup failed: ", err)
 	}
 	defer func() {
-		if err := syscall.Unmount(root+"/sys/fs/cgroup", 0); err != nil {
+		if err := syscall.Unmount(newroot+"/sys/fs/cgroup", 0); err != nil {
 			log.Error("unmount /sys/fs/cgroup failed: ", err)
 		}
 	}()
@@ -157,8 +167,8 @@ func main_runc() {
 			continue
 		}
 
-		vp := filepath.Join("/var/lib/docker/volumes/", m.VolumeName, "_data", m.VolumePath)
-		gp := filepath.Join("/cache/containers/", container.ID, "root", m.GuestPath)
+		vp := filepath.Join(oldroot+"/var/lib/docker/volumes/", m.VolumeName, "_data", m.VolumePath)
+		gp := filepath.Join(newroot + m.GuestPath)
 
 		os.MkdirAll(vp, 0755)
 		os.MkdirAll(gp, 0755)
@@ -187,11 +197,11 @@ func main_runc() {
 			isDir = stat.IsDir()
 		}
 
-		gp := filepath.Join(root, m.GuestPath)
+		gp := filepath.Join(newroot, m.GuestPath)
 
 		if isDir {
 			os.MkdirAll(filepath.Dir(m.HostPath), 0755)
-			inChroot(root, func() error {
+			inChroot(newroot, func() error {
 
 				err := os.MkdirAll(m.GuestPath, 0755)
 				if err != nil {
@@ -200,7 +210,7 @@ func main_runc() {
 
 				gpr, err := filepath.EvalSymlinks(m.GuestPath)
 				if err == nil {
-					gp = filepath.Join(root, gpr)
+					gp = filepath.Join(newroot, gpr)
 				}
 
 				return nil
@@ -209,7 +219,7 @@ func main_runc() {
 
 		} else {
 
-			err := inChroot(root, func() error {
+			err := inChroot(newroot, func() error {
 
 				os.Mkdir(filepath.Dir(m.GuestPath), 0755)
 
@@ -221,7 +231,7 @@ func main_runc() {
 
 				gpr, err := filepath.EvalSymlinks(m.GuestPath)
 				if err == nil {
-					gp = filepath.Join(root, gpr)
+					gp = filepath.Join(newroot, gpr)
 				}
 
 				return nil
@@ -246,8 +256,40 @@ func main_runc() {
 	}
 
 	// bind mount /lib/modules so userspace can load more stuff
-	os.MkdirAll(root+"/lib/modules", 0755)
-	syscall.Mount("/lib/modules", root+"/lib/modules", "", syscall.MS_BIND|syscall.MS_RDONLY, "")
+	os.MkdirAll(newroot+"/lib/modules", 0755)
+	syscall.Mount(oldroot+"/lib/modules", newroot+"/lib/modules", "", syscall.MS_BIND|syscall.MS_RDONLY, "")
+
+	// overmount / with container root
+	// this is needed to change the root of the mount namespace
+	// see https://unix.stackexchange.com/questions/583138/why-does-initramfs-need-to-overmount-rootfs-with-the-new-root
+
+	err = syscall.Chdir(newroot)
+	if err != nil {
+		log.Warnf("runc: chdir failed: %s", err)
+	}
+
+	os.MkdirAll(oldroot, 0755)
+	err = syscall.Mount("/", oldroot, "", syscall.MS_BIND|syscall.MS_PRIVATE, "")
+	if err != nil {
+		log.Error("mount pivotroot: %w", err)
+		return
+	}
+
+	err = syscall.Mount(newroot, "/", "", syscall.MS_MOVE|syscall.MS_REC, "")
+	if err != nil {
+		log.Fatalf("move pivotroot: %s", err)
+		return
+	}
+
+	err = syscall.Chroot(".")
+	if err != nil {
+		log.Fatalf("chroot pivotroot: %s", err)
+		return
+	}
+
+	// done overmount. we're now proper inside the  container
+	newroot = "/"
+	oldroot = "/oldroot-not-available"
 
 	// set hostname
 	if container.Hostname == "" {
@@ -276,12 +318,6 @@ func main_runc() {
 	var flatenv = []string{}
 	for k, v := range container.Process.Env {
 		flatenv = append(flatenv, k+"="+v)
-	}
-
-	err = syscall.Chroot(root)
-	if err != nil {
-		log.Errorf("runc: chroot failed: %s", err)
-		return
 	}
 
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
@@ -470,7 +506,8 @@ func (c *Container) prepare() error {
 }
 
 func (c *Container) run() error {
-	cmd := exec.Command("/bin/runc", c.Spec.ID)
+
+	cmd := exec.Command("/proc/self/exe", "run2", c.Spec.ID)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS |
 			syscall.CLONE_NEWUTS |
@@ -573,6 +610,8 @@ func (c *Container) run() error {
 			}
 		}()
 	}
+
+	os.WriteFile(fmt.Sprintf("/cache/containers/%s/pid", c.Spec.ID), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
 
 	reportContainerState(c.Spec.ID, spec.STATE_RUNNING, -1, "", nil)
 
