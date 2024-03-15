@@ -1,4 +1,4 @@
-VARIANT=default
+VARIANT=snp
 
 all: kcradle pkg.tar
 

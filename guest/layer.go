@@ -213,6 +213,7 @@ func untar(fo io.Reader, prefix string) {
 
 		os.Chtimes(hdr.Name, hdr.AccessTime, hdr.ModTime)
 		os.Chown(hdr.Name, hdr.Uid, hdr.Gid)
+		os.Chmod(hdr.Name, os.FileMode(hdr.Mode))
 
 		for key, value := range hdr.PAXRecords {
 			const xattrPrefix = "SCHILY.xattr."

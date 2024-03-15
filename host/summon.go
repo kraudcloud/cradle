@@ -7,6 +7,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -20,8 +21,6 @@ import (
 )
 
 func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolumes []string) {
-
-
 
 	err := os.MkdirAll(cacheDir, 0755)
 	if err != nil {
@@ -264,7 +263,6 @@ func extractDocker(ctx context.Context, cacheDir string, ref string) (*spec.Cont
 		} `json:"config"`
 	}
 
-	var configs = make(map[string]config)
 	var tmpfiles = make(map[string]string)
 
 	for {
@@ -297,14 +295,6 @@ func extractDocker(ctx context.Context, cacheDir string, ref string) (*spec.Cont
 			}
 
 			continue
-		} else if strings.HasSuffix(h.Name, ".json") {
-			var c config
-			err := json.NewDecoder(tr).Decode(&c)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode %s: %w", h.Name, err)
-			}
-			configs[h.Name] = c
-			continue
 		}
 
 		file, err := os.Create(filepath.Join(cacheDir, "docker", h.Name))
@@ -325,14 +315,20 @@ func extractDocker(ctx context.Context, cacheDir string, ref string) (*spec.Cont
 			filepath.Join(cacheDir, "docker", h.Name)
 	}
 
-	config1, ok := configs[manifests[0].Config]
-	if !ok {
-		return nil, fmt.Errorf("config " + manifests[0].Config + " missing")
+	configContent, err := os.ReadFile(filepath.Join(cacheDir, "docker", manifests[0].Config))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config %s: %w", manifests[0].Config, err)
+	}
+
+	var config1 config
+	err = json.NewDecoder(bytes.NewReader(configContent)).Decode(&config1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode config %s: %w", manifests[0].Config, err)
 	}
 
 	var r = &spec.Container{
 		ID:       "217c2d60-8b4f-4b1d-ba79-144aa0c31e6c",
-		Name:	  strings.ReplaceAll(ref, "/", "_"),
+		Name:     strings.ReplaceAll(ref, "/", "_"),
 		Hostname: "good_morning",
 		Image: spec.Image{
 			ID: "2de815d9-76ea-4a63-ab54-9bba7cca78a3",
