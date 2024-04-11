@@ -14,15 +14,35 @@ import (
 	"time"
 
 	"github.com/euank/go-kmsg-parser/v2/kmsgparser"
+	"net"
 )
 
+var VDOCKER_ALLOWED []*net.IPNet
+
 func vdocker() {
+
+	if CONFIG.VDocker == nil {
+		log.Warn("vdocker: not configured")
+		return
+	}
+
+	for _, as := range CONFIG.VDocker.AllowPrefix {
+		_, net, err := net.ParseCIDR(as)
+		if err != nil {
+			continue
+		}
+
+		VDOCKER_ALLOWED = append(VDOCKER_ALLOWED, net)
+	}
+
 	go func() {
+		log.Println("vdocker: DOCKER_HOST='" + CONFIG.VDocker.Listen + "'")
 		for {
-			err := http.ListenAndServe("["+CONFIG.Network.FabricIp6+"]:1", vdockerHttpHandler())
+			err := http.ListenAndServe(CONFIG.VDocker.Listen, vdockerHttpHandler())
 			if err != nil {
-				log.Warn("vdocker http server error:", err)
+				log.Warn("vdocker: http server error:", err)
 			}
+
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()
@@ -32,8 +52,19 @@ func vdockerHttpHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if !strings.HasPrefix(r.RemoteAddr, "[fdfd:") && !strings.HasPrefix(r.RemoteAddr, "[fddd:") {
-			log.Warnf("docker api request from non-vpn address: %s. THIS IS A SECURITY ISSUE", r.RemoteAddr)
+		host, _, _ := net.SplitHostPort(r.RemoteAddr)
+		hostIP := net.ParseIP(host)
+
+		allowed := false
+		for _, n := range VDOCKER_ALLOWED {
+			if n.Contains(hostIP) {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			log.Warnf("docker api request from non-allowed address: %s. THIS IS A SECURITY ISSUE", r.RemoteAddr)
 			w.WriteHeader(403)
 			return
 		}

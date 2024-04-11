@@ -3,7 +3,6 @@
 package main
 
 import (
-	"io/ioutil"
 	golog "log"
 	"os"
 	"os/exec"
@@ -48,7 +47,7 @@ func main_init() {
 
 	services()
 	startDns()
-	go vmm3()
+	go phaser()
 
 	vdocker()
 
@@ -115,7 +114,7 @@ func makedev() {
 
 	os.MkdirAll("/dev/disk/by-serial/", 0777)
 
-	iter, err := ioutil.ReadDir("/sys/class/block/")
+	iter, err := os.ReadDir("/sys/class/block/")
 	if err != nil {
 		log.Errorf("ReadDir: %v", err)
 		return
@@ -125,15 +124,17 @@ func makedev() {
 		name := f.Name()
 
 		// /dev/disk/by-serial/serial
-		serial, err := ioutil.ReadFile("/sys/class/block/" + name + "/serial")
+		serial, err := os.ReadFile("/sys/class/block/" + name + "/serial")
 		if err == nil {
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 		}
 
-		serial, err = ioutil.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
+		serial, err = os.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
 		if err == nil {
 			serial = serial[8:]
+			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 
+			// TODO enclaive xcradle needs these :(
 			a, b, ok := strings.Cut(string(serial), ".")
 			if ok {
 				os.MkdirAll("/dev/disk/"+a, 0777)

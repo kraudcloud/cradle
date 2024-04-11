@@ -19,4 +19,7 @@ copy --from=build /init /init
 
 run	ln -sf /init /sbin/init
 
-run apk add --no-cache iproute2 e2fsprogs xfsprogs cryptsetup nftables rsync
+run apk add --no-cache iproute2 e2fsprogs xfsprogs cryptsetup nftables rsync 
+
+# TODO: these are enclaive specific, remove them once they have a sidecar
+run apk add --no-cache lvm2 cryptsetup sfdisk sgdisk e2fsprogs-extra

@@ -11,7 +11,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/xattr"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -24,84 +23,48 @@ const (
 )
 
 func unpackLayers() {
+
 	os.MkdirAll("/cache/layers/", 0755)
 
-	iter, err := ioutil.ReadDir("/dev/disk/layer/")
-	if err != nil {
-		log.Errorf("ReadDir /dev/disk/layer/ : %v", err)
-		return
-	}
+	var visited = map[string]bool{}
 
-	for _, f := range iter {
-		name := strings.Split(f.Name(), ".")
+	for _, container := range CONFIG.Pod.Containers {
+		for _, layer := range container.Image.Layers {
 
-		if len(name) < 2 {
-			continue
-		}
+			if visited[layer.ID] {
+				continue
+			}
+			visited[layer.ID] = true
 
-		uuid := name[0]
+			fo, err := os.Open("/dev/disk/by-serial/layer." + layer.ID)
+			if err != nil {
+				exit(fmt.Errorf("open /dev/disk/by-serial/layer.%s: %v", layer.ID, err))
+				return
+			}
+			defer fo.Close()
 
-		if name[len(name)-1] == "extfs" {
-			os.MkdirAll("/cache/layers/"+uuid, 0755)
-			syscall.Mount("/dev/disk/layer/"+f.Name(), "/cache/layers/"+uuid, "ext4", syscall.MS_RDONLY, "")
-		}
+			log.Info("cradle: extracting ", humanize.Bytes(layer.Size), " layer ", layer.ID)
 
-		gz := false
-		if name[len(name)-1] == "gz" {
-			gz = true
-			name = name[:len(name)-1]
-		}
+			hasher := sha256.New()
+			reader := io.TeeReader(io.LimitReader(fo, int64(layer.Size)), hasher)
 
-		if name[len(name)-1] != "tar" {
-			continue
-		}
-
-		os.MkdirAll("/cache/layers/"+uuid, 0755)
-
-		fo, err := os.Open("/dev/disk/layer/" + f.Name())
-		if err != nil {
-			exit(err)
-			return
-		}
-		defer fo.Close()
-
-		pos, _ := fo.Seek(0, io.SeekEnd)
-		fo.Seek(0, io.SeekStart)
-		log.Info("cradle: extracting ", humanize.Bytes(uint64(pos)), " layer ", f.Name())
-
-		var reader io.Reader = fo
-
-		if gz {
-			reader, err = gzip.NewReader(reader)
+			gzr, err := gzip.NewReader(reader)
 			if err != nil {
 				exit(fmt.Errorf("gzip.NewReader: %v", err))
 				return
 			}
-		}
 
-		hasher := sha256.New()
-		reader = io.TeeReader(reader, hasher)
+			os.MkdirAll("/cache/layers/"+layer.ID, 0755)
+			untar(gzr, "/cache/layers/"+layer.ID+"/")
 
-		untar(reader, "/cache/layers/"+uuid+"/")
+			io.Copy(io.Discard, reader)
 
-		io.Copy(ioutil.Discard, reader)
-		hash := fmt.Sprintf("%x", hasher.Sum(nil))
-
-		for _, container := range CONFIG.Pod.Containers {
-			for _, layer := range container.Image.Layers {
-				if layer.ID == uuid {
-
-					parts := strings.Split(layer.Digest, ":")
-					if len(parts) != 2 || parts[0] != "sha256" {
-						log.Warnf("cradle: not checking unparsable digest of layer %s : '%s'", uuid, layer.Digest)
-						continue
-					}
-					if parts[1] != hash {
-						exit(fmt.Errorf("layer %s sha256 mismatch: expected: %s but got: %s", uuid, parts[1], hash))
-						return
-					}
-				}
+			hash := fmt.Sprintf("%x", hasher.Sum(nil))
+			if layer.Sha256 != hash {
+				exit(fmt.Errorf("layer %s sha256 mismatch: expected: %s but got: %s", layer.ID, layer.Sha256, hash))
+				return
 			}
+
 		}
 	}
 }

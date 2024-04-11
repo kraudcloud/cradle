@@ -33,11 +33,15 @@ func main() {
 	rootCmd.AddCommand(cc)
 
 	cc = &cobra.Command{
-		Use:   "run [cacheDir]",
+		Use:   "run [runDir]",
 		Short: "run the vmm host simulator",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			run(args[0])
+			vm, err := New(args[0])
+			if err != nil {
+				panic(err)
+			}
+			vm.Run()
 		},
 	}
 

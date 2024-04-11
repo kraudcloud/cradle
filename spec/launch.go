@@ -14,7 +14,9 @@ type Launch struct {
 
 	Network *Network `json:"network,omitempty"`
 
-	Role *Role `json:"role,omitempty"`
+	Phaser *Phaser `json:"phaser,omitempty"`
+
+	VDocker *VDocker `json:"vdocker,omitempty"`
 }
 
 // pod to be launched in cradle
@@ -42,16 +44,22 @@ type Volume struct {
 	// name referenced inside container
 	Name string `json:"name"`
 
-	// storage class
-	Class string `json:"class"`
-
 	// hvm transport mode
 	Transport string `json:"transport"`
 
 	// local storage pool
+	//
+	// Deprecated: managed by k8s storage controller
+	Class string `json:"class"`
+
+	// local storage pool
+	//
+	// Deprecated: managed by k8s storage controller
 	Filesystem string `json:"filesystem"`
 
 	// expected size in bytes
+	//
+	// Deprecated: managed by k8s storage controller
 	Size uint64 `json:"size"`
 }
 
@@ -103,8 +111,14 @@ type Layer struct {
 	// sha of compressed layer data (usually tar.gz)
 	Sha256 string `json:"sha256"`
 
-	// OCI image id, sha of uncompressed tar
-	Digest string `json:"digest"`
+	// size of the compressed layer data
+	Size uint64 `json:"size"`
+
+	// media type of the compressed layer data
+	// - tar.gz -> "application/vnd.docker.image.rootfs.diff.tar.gzip"
+	// - tar	-> "application/vnd.docker.image.rootfs.diff.tar"
+	// - extfs
+	MediaType string `json:"media_type"`
 }
 
 type Process struct {
@@ -189,22 +203,30 @@ type ConfigMount struct {
 	Content []byte `json:"content"`
 }
 
-type Network struct {
-	Nameservers []string `json:"nameservers,omitempty"`
-
-	FabricIp6 string `json:"fip6,omitempty"`
-	FabricGw6 string `json:"fgw6,omitempty"`
-
-	TransitIp4 string `json:"tip4,omitempty"`
-	TransitGw4 string `json:"tgw4,omitempty"`
-
-	TransitIp6 string `json:"tip6,omitempty"`
-	TransitGw6 string `json:"tgw6,omitempty"`
-
-	PublicIPs []string `json:"public_ips,omitempty"`
+type NetworkRoute struct {
+	Destination string `json:"dst,omitempty"`
+	Via         string `json:"via,omitempty"`
 }
 
-type Role struct {
-	Api   []string `json:"api,omitempty"`
+type NetworkInterface struct {
+	Name     string         `json:"name"`
+	HostMode string         `json:"mode,omitempty"`
+	HostIPs  []string       `json:"host_ips,omitempty"`
+	GuestIPs []string       `json:"guest_ips,omitempty"`
+	Routes   []NetworkRoute `json:"routes,omitempty"`
+}
+
+type Network struct {
+	Nameservers []string           `json:"nameservers,omitempty"`
+	Interfaces  []NetworkInterface `json:"interfaces,omitempty"`
+}
+
+type Phaser struct {
+	Url   []string `json:"api,omitempty"`
 	Token string   `json:"token,omitempty"`
+}
+
+type VDocker struct {
+	Listen      string   `json:"listen,omitempty"`
+	AllowPrefix []string `json:"allow,omitempty"`
 }

@@ -12,13 +12,13 @@ import (
 
 func emulateDockerSock() {
 
-	if CONFIG.Role == nil {
+	if CONFIG.Phaser == nil {
 		log.Println("docker.sock: no vmm role")
 		return
 	}
 
 	hosts := []string{}
-	for _, surl := range CONFIG.Role.Api {
+	for _, surl := range CONFIG.Phaser.Url {
 
 		u, err := url.Parse(surl)
 		if err != nil {
@@ -35,7 +35,7 @@ func emulateDockerSock() {
 			req.URL.Scheme = "https"
 			req.URL.Host = "docker.kraudcloud.com"
 			req.Host = "docker.kraudcloud.com"
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", CONFIG.Role.Token))
+			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", CONFIG.Phaser.Token))
 		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

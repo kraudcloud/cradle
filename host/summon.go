@@ -6,13 +6,13 @@
 package main
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	dockerclient "github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/kraudcloud/cradle/spec"
 	"io"
 	"os"
@@ -54,25 +54,53 @@ func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolu
 
 	fmt.Println("extracting", dockerImage)
 
-	cj, err := extractDocker(context.Background(), cacheDir, dockerImage)
+	cj, err := downloadImage(context.Background(), cacheDir, dockerImage)
 	if err != nil {
 		panic(err)
 	}
 
 	var launchConfig = &spec.Launch{
-		Version: 2,
+		Version: 3,
 		ID:      "6115c213-a87a-4206-9b99-0d0235ac560f",
 		Pod: &spec.Pod{
 			Name:       strings.ReplaceAll(dockerImage, "/", "_"),
 			Namespace:  "default",
 			Containers: []spec.Container{*cj},
 		},
+		VDocker: &spec.VDocker{
+			Listen:      "[fd53:d0ce::2]:1",
+			AllowPrefix: []string{"fd53:d0ce::1/128"},
+		},
 		Network: &spec.Network{
-			FabricIp6:   "fddd::2",
-			FabricGw6:   "fddd::1",
-			TransitIp4:  "10.0.2.15",
-			TransitGw4:  "10.0.2.2",
 			Nameservers: []string{"1.1.1.1", "8.8.8.8"},
+			Interfaces: []spec.NetworkInterface{
+				{
+					Name:     "eth0",
+					HostMode: "nat",
+					HostIPs:  []string{"10.0.2.1/32"},
+					GuestIPs: []string{"10.0.2.15/32"},
+					Routes: []spec.NetworkRoute{
+						{
+							Destination: "10.0.2.1/32",
+						},
+						{
+							Destination: "0.0.0.0/0",
+							Via:         "10.0.2.1",
+						},
+					},
+				},
+				{
+					Name:     "vdocker",
+					HostMode: "p2p",
+					HostIPs:  []string{"fd53:d0ce::1/128"},
+					GuestIPs: []string{"fd53:d0ce::2/128"},
+					Routes: []spec.NetworkRoute{
+						{
+							Destination: "fd53:d0ce::1/128",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -89,7 +117,6 @@ func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolu
 		launchConfig.Pod.Volumes = append(launchConfig.Pod.Volumes, spec.Volume{
 			ID:        id,
 			Name:      id,
-			Class:     "nfs",
 			Transport: "virtiofs",
 		})
 
@@ -118,9 +145,8 @@ func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolu
 		}
 
 		launchConfig.Pod.Volumes = append(launchConfig.Pod.Volumes, spec.Volume{
-			ID:    fmt.Sprintf("vol%d", i),
-			Name:  fmt.Sprintf("vol%d", i),
-			Class: "lv",
+			ID:   id,
+			Name: id,
 		})
 
 		launchConfig.Pod.Containers[0].VolumeMounts = append(launchConfig.Pod.Containers[0].VolumeMounts,
@@ -184,187 +210,100 @@ func summon(cacheDir string, dockerImage string, fileVolumes []string, blockVolu
 		panic(err)
 	}
 
-	// write tap.sh, this is usually done with fabric in the real vmm,
-	// but for local dev we need something simpler
-
-	f, err = os.Create(filepath.Join(cacheDir, "tap.sh"))
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	f.WriteString(`#!/bin/sh
-set -ex
-
-
-iff=$1
-
-ip link set $iff up
-ip addr add fddd::1/64 dev $iff
-ip -6 route add fddd::2/128 dev $iff
-
-ip6tables -I INPUT -i $iff -j ACCEPT
-ip6tables -I FORWARD -i $iff -j ACCEPT
-ip6tables -I FORWARD -o $iff -j ACCEPT
-ip6tables -t nat -C POSTROUTING -o wlp3s0 -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o wlp3s0 -j MASQUERADE
-ip6tables -t nat -C POSTROUTING -o host -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o host -j MASQUERADE
-ip6tables -t nat -C POSTROUTING -o enp6s0 -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o enp6s0 -j MASQUERADE
-
-ip addr add 10.0.2.2/24 dev $iff
-
-iptables -I INPUT -i $iff -j ACCEPT
-iptables -I FORWARD -i $iff -j ACCEPT
-iptables -I FORWARD -o $iff -j ACCEPT
-iptables -t nat -C POSTROUTING -o wlp3s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o wlp3s0 -j MASQUERADE
-iptables -t nat -C POSTROUTING -o host -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o host -j MASQUERADE
-iptables -t nat -C POSTROUTING -o enp6s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o enp6s0 -j MASQUERADE
-`)
-
-	os.Chmod(filepath.Join(cacheDir, "tap.sh"), 0755)
-
 }
 
-func extractDocker(ctx context.Context, cacheDir string, ref string) (*spec.Container, error) {
+func downloadImage(ctx context.Context, cacheDir string, strref string) (*spec.Container, error) {
 
-	docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv,
-		dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-	defer docker.Close()
-
-	img, _, err := docker.ImageInspectWithRaw(ctx, ref)
+	ref, err := name.ParseReference(strref)
 	if err != nil {
 		return nil, err
 	}
 
-	imgtar, err := docker.ImageSave(ctx, []string{img.ID})
+	rmt, err := remote.Get(ref,
+		remote.WithPlatform(v1.Platform{
+			Architecture: "amd64",
+			OS:           "linux",
+		}),
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer imgtar.Close()
 
-	var reader io.Reader = imgtar
-	tr := tar.NewReader(reader)
-
-	var manifests []struct {
-		Config string
-	}
-
-	type config struct {
-		Rootfs struct {
-			Type    string   `json:"type"`
-			DiffIDs []string `json:"diff_ids"`
-		} `json:"rootfs"`
-		Container string `json:"container"`
-		Config    struct {
-			Env []string `json:"Env"`
-			Cmd []string `json:"Cmd"`
-		} `json:"config"`
-	}
-
-	var tmpfiles = make(map[string]string)
-
-	for {
-		h, err := tr.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-
-		if h.Typeflag == tar.TypeDir {
-
-			err := os.MkdirAll(filepath.Join(cacheDir, "docker", h.Name), 0755)
-			if err != nil {
-				return nil, err
-			}
-
-			continue
-		}
-
-		if h.Name == "manifest.json" {
-			err := json.NewDecoder(tr).Decode(&manifests)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode manifest.json: %w", err)
-			}
-
-			if len(manifests) != 1 {
-				return nil, fmt.Errorf("expected exactly one image from export, got %d", len(manifests))
-			}
-
-			continue
-		}
-
-		file, err := os.Create(filepath.Join(cacheDir, "docker", h.Name))
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-
-		hasher := sha256.New()
-		w := io.MultiWriter(file, hasher)
-
-		_, err = io.Copy(w, tr)
-		if err != nil {
-			return nil, err
-		}
-
-		tmpfiles["sha256:"+fmt.Sprintf("%x", hasher.Sum(nil))] =
-			filepath.Join(cacheDir, "docker", h.Name)
-	}
-
-	configContent, err := os.ReadFile(filepath.Join(cacheDir, "docker", manifests[0].Config))
+	img, err := rmt.Image()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config %s: %w", manifests[0].Config, err)
+		return nil, err
 	}
 
-	var config1 config
-	err = json.NewDecoder(bytes.NewReader(configContent)).Decode(&config1)
+	config, err := img.ConfigFile()
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode config %s: %w", manifests[0].Config, err)
+		return nil, err
+	}
+
+	layers, err := img.Layers()
+	if err != nil {
+		return nil, err
 	}
 
 	var r = &spec.Container{
 		ID:       "217c2d60-8b4f-4b1d-ba79-144aa0c31e6c",
-		Name:     strings.ReplaceAll(ref, "/", "_"),
+		Name:     strings.ReplaceAll(strref, "/", "_"),
 		Hostname: "good_morning",
 		Image: spec.Image{
 			ID: "2de815d9-76ea-4a63-ab54-9bba7cca78a3",
 		},
 		Process: spec.Process{
-			Cmd:     config1.Config.Cmd,
+			Cmd:     config.Config.Cmd,
 			Env:     make(map[string]string),
 			Tty:     true,
 			Workdir: "/",
 		},
 	}
 
-	for _, e := range config1.Config.Env {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid env: " + e)
-		}
-		r.Process.Env[parts[0]] = parts[1]
-	}
+	for _, layer := range layers {
 
-	for _, diffID := range config1.Rootfs.DiffIDs {
-
-		fileName, ok := tmpfiles[diffID]
-		if !ok {
-			return nil, fmt.Errorf("diffID " + diffID + " missing")
+		digest, err := layer.Digest()
+		if err != nil {
+			return nil, err
 		}
 
-		id := strings.TrimPrefix(diffID, "sha256:")
+		id := strings.TrimPrefix(digest.String(), "sha256:")
+
+		mt, err := layer.MediaType()
+		if err != nil {
+			return nil, err
+		}
+
+		if mt != "application/vnd.docker.image.rootfs.diff.tar.gzip" {
+			return nil, fmt.Errorf("unknown layer media type: %s", mt)
+		}
+
+		readTar, err := layer.Compressed()
+		if err != nil {
+			return nil, err
+		}
+
+		f, err := os.Create(filepath.Join(cacheDir, "layers", id))
+		if err != nil {
+			return nil, err
+		}
+
+		hasher := sha256.New()
+		w := io.MultiWriter(f, hasher)
+
+		size, err := io.Copy(w, readTar)
+
+		f.Close()
+
+		if err != nil {
+			return nil, err
+		}
 
 		r.Image.Layers = append(r.Image.Layers, spec.Layer{
-			ID:     id,
-			Sha256: id,
-			Digest: diffID,
+			ID:        id,
+			Sha256:    fmt.Sprintf("%x", hasher.Sum(nil)),
+			MediaType: string(mt),
+			Size:      uint64(size),
 		})
-
-		os.Rename(fileName, filepath.Join(cacheDir+"/layers", id))
 	}
 
 	return r, nil

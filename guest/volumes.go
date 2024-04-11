@@ -4,9 +4,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/kraudcloud/cradle/spec"
 	"golang.org/x/sys/unix"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -57,41 +55,18 @@ func fileVolumes() {
 func blockVolumes() {
 
 	os.MkdirAll("/var/lib/docker/volumes/", 0755)
+	os.MkdirAll("/dev/disk/volume/", 0755)
 
-	iter, err := ioutil.ReadDir("/dev/disk/volume/")
-	if err != nil {
-		log.Debugf("ReadDir /dev/disk/volume/ : %v", err)
-		return
-	}
+	for _, ref := range CONFIG.Pod.Volumes {
 
-	for _, f := range iter {
-		name := strings.Split(f.Name(), ".")
+		devser := fmt.Sprintf("/dev/disk/by-serial/volume.%s", ref.ID)
 
-		if len(name) < 2 {
+		_, err := os.Stat(devser)
+		if err != nil {
 			continue
 		}
 
-		uuid := name[0]
-
-		if name[len(name)-1] != "img" {
-			continue
-		}
-
-		var ref spec.Volume
-		for _, v := range CONFIG.Pod.Volumes {
-			if v.ID == uuid {
-				ref = v
-				break
-			}
-		}
-
-		if ref.Name == "" {
-			continue
-		}
-
-		os.Symlink("/dev/disk/volume/"+f.Name(), "/dev/disk/volume/"+ref.Name)
-
-		cmd := exec.Command("/sbin/blkid", "/dev/disk/volume/"+f.Name())
+		cmd := exec.Command("/sbin/blkid", devser)
 		out, err := cmd.Output()
 		if err != nil {
 			log.Errorf("blkid: %v", err)
@@ -107,11 +82,11 @@ func blockVolumes() {
 			}
 		}
 
-		log.Printf("cradle: volume %s probed: %s", uuid, blkid)
+		log.Printf("cradle: volume %s probed: %s", ref.ID, blkid)
 
 		if blkid == "" {
 			// double check that its empty, and we arent just failing elsewhere
-			f, err := os.Open("/dev/disk/volume/" + f.Name())
+			f, err := os.Open(devser)
 			if err != nil {
 				log.Errorf("volume: %v", err)
 				continue
@@ -125,12 +100,12 @@ func blockVolumes() {
 			}
 
 			if !allzero(buf) {
-				log.Warnf("volume: %s has unknown filesystem, refusing to touch it", uuid)
+				log.Warnf("volume: %s has unknown filesystem, refusing to touch it", ref.ID)
 				continue
 			}
 		}
 
-		// if its not mounted, dont touch it. user might do weird things
+		// if its not mounted, dont touch it. user might do weird things in xcradle
 		isMounted := false
 		for _, container := range CONFIG.Pod.Containers {
 			for _, m := range container.VolumeMounts {
@@ -145,8 +120,8 @@ func blockVolumes() {
 		}
 
 		if blkid == "" {
-			log.Printf("cradle: formatting volume %s", uuid)
-			err = mkfs("/dev/disk/volume/"+f.Name(), "volume")
+			log.Printf("cradle: formatting volume %s", ref.ID)
+			err = mkfs(devser, "volume")
 			if err != nil {
 				log.Errorf("mkfs.xfs: %v", err)
 				continue
@@ -157,13 +132,13 @@ func blockVolumes() {
 		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name, 0755)
 
 		if blkid == "ext4" {
-			err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "ext4", 0, "")
+			err = syscall.Mount(devser, "/var/lib/docker/volumes/"+ref.Name+"/", "ext4", 0, "")
 			if err != nil {
 				log.Errorf("mount: %v", err)
 				continue
 			}
 		} else if blkid == "xfs" {
-			err = syscall.Mount("/dev/disk/volume/"+f.Name(), "/var/lib/docker/volumes/"+ref.Name+"/", "xfs", 0, "")
+			err = syscall.Mount(devser, "/var/lib/docker/volumes/"+ref.Name+"/", "xfs", 0, "")
 			if err != nil {
 				log.Errorf("mount: %v", err)
 				continue
@@ -173,7 +148,11 @@ func blockVolumes() {
 			continue
 		}
 
-		os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
+		err = os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
+		if err != nil {
+			log.Errorf("mkdir: %v", err)
+			continue
+		}
 
 		mountedTo := "/var/lib/docker/volumes/" + ref.Name + "/"
 		go func() {

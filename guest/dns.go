@@ -173,7 +173,7 @@ func startDns() {
 		log.Printf("DNS : %s", r.Question[0].Name)
 
 		// delay the first request until we have a coherent vpc view
-		if !DNS.firstViewHasArrived.Load() && CONFIG.Role != nil {
+		if !DNS.firstViewHasArrived.Load() && CONFIG.Phaser != nil {
 			log.Printf("DNS : waiting for first view")
 			select {
 			case <-DNS.firstViewArrival.Done():

@@ -6,12 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kraudcloud/cradle/badyeet"
 	"github.com/kraudcloud/cradle/spec"
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,7 +47,6 @@ type Vmm struct {
 	stopped    bool
 	lock       sync.Mutex
 	config     *spec.Launch
-	yc         *badyeet.Sock
 	execs      map[uint8]*Exec
 	containers map[uint8]*Container
 
@@ -67,15 +64,21 @@ func (self *Vmm) Write(p []byte) (n int, err error) {
 
 func (self *Vmm) Shutdown(msg string) error {
 
-	r, err := http.Post(fmt.Sprintf("http://[%s]:1/v1.41/vmm/shutdown?reason=%s",
-		self.config.Network.FabricIp6,
-		url.QueryEscape(msg),
-	), "application/json", nil)
-	if err != nil {
-		return err
-	}
+	// FIXME how to contact cradle?
 
-	r.Body.Close()
+	/*
+
+		r, err := http.Post(fmt.Sprintf("http://[%s]:1/v1.41/vmm/shutdown?reason=%s",
+			self.config.Network.FabricIp6,
+			url.QueryEscape(msg),
+		), "application/json", nil)
+		if err != nil {
+			return err
+		}
+
+		r.Body.Close()
+	*/
+
 	return nil
 }
 
@@ -119,79 +122,8 @@ func (self *ContextWrapper) Value(key interface{}) interface{} {
 	return self.ctx.Value(key)
 }
 
-func (self *Vmm) ycWriteExec(ctx context.Context, index uint8, subkey uint8, b []byte) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	self.ycWriteExecLocked(ctx, index, subkey, b)
-}
-
-func (self *Vmm) ycWriteExecLocked(ctx context.Context, index uint8, subkey uint8, b []byte) {
-	if self.yc != nil {
-		self.yc.Write(badyeet.Message{Key: spec.YKExec(index, subkey), Value: b})
-	}
-}
-
-func (self *Vmm) ycWriteContainer(ctx context.Context, index uint8, subkey uint8, b []byte) {
-
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.After(10 * time.Second):
-		fmt.Printf("ycWriteContainer timeout, index=%d, subkey=%d\n", index, subkey)
-		return
-	case <-self.containers[index].seenNotify:
-	}
-
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	self.yc.Write(badyeet.Message{Key: spec.YKContainer(index, subkey), Value: b})
-}
-
 func (self *Vmm) Connect(cradleSockPath string) (context.Context, error) {
 
-	var err error
-	var conn net.Conn
-	for i := 0; i < 1000; i++ {
-		conn, err = net.Dial("unix", cradleSockPath)
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Millisecond * 10)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to cradle: %s", err)
-	}
-	err = badyeet.Sync(conn, 30*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("sync failed: %s", err)
-	}
-	self.yc, err = badyeet.Connect(conn,
-		badyeet.Hello("libvmm,1"),
-		badyeet.Keepalive(time.Second),
-		badyeet.HandshakeTimeout(time.Minute),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx_, cancel := context.WithCancel(context.Background())
-	ctx := &ContextWrapper{ctx: ctx_, err: nil}
-
-	go func() {
-		defer cancel()
-		for {
-			err := self.ycread()
-			if err != nil {
-				ctx.err = err
-				self.stopped = true
-				return
-			}
-		}
-	}()
-
-	return ctx, nil
 }
 
 func (self *Vmm) ycread() error {
