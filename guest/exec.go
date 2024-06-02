@@ -82,7 +82,7 @@ func (e *Exec) Run(dout io.WriteCloser, din io.Reader) {
 
 		cmd = exec.Command("/proc/self/exe", append([]string{
 			"nsenter",
-			container.Spec.ID,
+			fmt.Sprintf("%d", container.Index),
 			e.WorkingDir,
 			e.Cmd[0],
 		}, e.Cmd[1:]...)...)

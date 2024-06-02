@@ -29,7 +29,7 @@ func luksFormat(device string) {
 func fileVolumes() {
 	os.MkdirAll("/var/lib/docker/volumes/", 0755)
 
-	for i, ref := range CONFIG.Pod.Volumes {
+	for i, ref := range CONFIG.Volumes {
 		if ref.Transport == "9p" {
 			os.MkdirAll("/var/lib/docker/volumes/"+ref.Name+"/_data", 0755)
 			err := syscall.Mount(
@@ -78,7 +78,7 @@ func blockVolumes() {
 		}
 
 		var ref spec.Volume
-		for _, v := range CONFIG.Pod.Volumes {
+		for _, v := range CONFIG.Volumes {
 			if v.ID == uuid {
 				ref = v
 				break
@@ -132,7 +132,7 @@ func blockVolumes() {
 
 		// if its not mounted, dont touch it. user might do weird things
 		isMounted := false
-		for _, container := range CONFIG.Pod.Containers {
+		for _, container := range CONFIG.Containers {
 			for _, m := range container.VolumeMounts {
 				if m.VolumeName == ref.Name {
 					isMounted = true

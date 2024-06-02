@@ -4,207 +4,157 @@ package spec
 
 // the interior launch spec
 type Launch struct {
-	// version of spec. currently 2
-	Version int `json:"version"`
+	ID string `json:"id" yaml:"id"`
 
-	// uuid of pod
-	ID string `json:"id"`
+	Network Network `json:"network,omitempty" yaml:"network,omitempty"`
 
-	Pod *Pod `json:"pod,omitempty"`
+	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 
-	Network *Network `json:"network,omitempty"`
+	Containers []Container `json:"containers,omitempty" yaml:"containers,omitempty"`
 
-	Role *Role `json:"role,omitempty"`
+	Volumes []Volume `json:"block_volumes,omitempty" yaml:"block_volumes,omitempty"`
 }
 
-// pod to be launched in cradle
-type Pod struct {
-
-	// api name of pod
-	Name string `json:"name"`
-
-	// api namespace of pod
-	Namespace string `json:"namespace"`
-
-	// block volumes provided by the hypervisor
-	Volumes []Volume `json:"block_volumes,omitempty"`
-
-	// the containers inside the pod
-	Containers []Container `json:"containers,omitempty"`
+type Resources struct {
+	Cpu int `json:"cpu" yaml:"cpu"`
+	Mem int `json:"mem" yaml:"mem"`
 }
 
 // a volume provided by the hypervisor
 type Volume struct {
 
-	// uuid of block volume
-	ID string `json:"id"`
+	// id passed as serial number
+	ID string `json:"id" yaml:"id"`
 
 	// name referenced inside container
-	Name string `json:"name"`
-
-	// storage class
-	Class string `json:"class"`
+	Name string `json:"name" yaml:"name"`
 
 	// hvm transport mode
-	Transport string `json:"transport"`
+	Transport string `json:"transport" yaml:"transport"`
 
-	// local storage pool
-	Filesystem string `json:"filesystem"`
-
-	// expected size in bytes
-	Size uint64 `json:"size"`
+	// hvm class
+	Class string `json:"class,omitempty" yaml:"class,omitempty"`
 }
 
 // the container spec
 type Container struct {
 
-	// uuid
-	ID string `json:"id"`
-
-	// api name
-	Name string `json:"name"`
-
 	// hostname inside container
-	Hostname string `json:"hostname"`
+	Hostname string `json:"hostname" yaml:"hostname"`
 
 	// image config
-	Image Image `json:"image"`
+	Image Image `json:"image,omitempty" yaml:"image,omitempty"`
 
 	// main process config
-	Process Process `json:"process"`
+	Process Process `json:"process" yaml:"process"`
 
 	// lifecycle of container
-	Lifecycle Lifecycle `json:"lifecycle"`
+	Lifecycle Lifecycle `json:"lifecycle" yaml:"lifecycle"`
 
 	// mount volumes
-	VolumeMounts []VolumeMount `json:"block_volume_mounts,omitempty"`
+	VolumeMounts []VolumeMount `json:"block_volume_mounts,omitempty" yaml:"block_volume_mounts,omitempty"`
 
 	// mount cradle host paths into container
-	BindMounts []BindMount `json:"bind_mounts,omitempty"`
-
-	// k8s config objects
-	ConfigMounts []ConfigMount `json:"config_mounts,omitempty"`
+	BindMounts []BindMount `json:"bind_mounts,omitempty" yaml:"bind_mounts,omitempty"`
 }
 
 type Image struct {
 
-	// image uuid
-	ID string `json:"id"`
-
 	// layers
-	Layers []Layer `json:"layers"`
+	Layers []Layer `json:"layers,omitempty" yaml:"layers,omitempty"`
+
+	// oci download ref
+	Ref string `json:"ref,omitempty" yaml:"ref,omitempty"`
 }
 
 type Layer struct {
 
-	// layer uuid
-	ID string `json:"id"`
+	// layer filename
+	ID string `json:"id" yaml:"id"`
 
 	// sha of compressed layer data (usually tar.gz)
-	Sha256 string `json:"sha256"`
+	Sha256 string `json:"sha256" yaml:"sha256"`
 
 	// OCI image id, sha of uncompressed tar
-	Digest string `json:"digest"`
+	Digest string `json:"digest" yaml:"digest"`
 }
 
 type Process struct {
 
 	// command and arguments
-	Cmd []string `json:"cmd"`
+	Cmd []string `json:"cmd" yaml:"cmd"`
 
 	// environment variables
-	Env map[string]string `json:"env"`
+	Env map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 
 	// working directory
-	Workdir string `json:"workdir"`
+	Workdir string `json:"workdir,omitempty" yaml:"workdir,omitempty"`
 
 	// run in pty
-	Tty bool `json:"tty"`
+	Tty bool `json:"tty" yaml:"tty"`
 
 	// User to run as. defaults to 0
-	User string `json:"user,omitempty"`
+	User string `json:"user,omitempty" yaml:"user,omitempty"`
 }
 
 type Lifecycle struct {
 
+	// when to run the container:
+	Before string `json:"before,omitempty" yaml:"stage,omitempty"`
+
 	// should container restart with exit code 0
-	RestartOnSuccess bool `json:"restart_on_success"`
+	RestartOnSuccess bool `json:"restart_on_success" yaml:"restart_on_success"`
 
 	// should container restart with exit code != 0
-	RestartOnFailure bool `json:"restart_on_failure"`
+	RestartOnFailure bool `json:"restart_on_failure" yaml:"restart_on_failure"`
 
 	// delay restarts by this amount of milliseconds
-	RestartDelay uint64 `json:"restart_delay"`
+	RestartDelay uint64 `json:"restart_delay" yaml:"restart_delay"`
 
 	// give up after starting this many times.
 	// note that the first start counts too
 	// 1 means never restart after initial launch
 	// 0 means infinite
-	MaxRestarts int `json:"max_restarts"`
+	MaxRestarts int `json:"max_restarts,omitempty" yaml:"max_restarts,omitempty"`
 
 	// fail entire pod when maxrestarts is reached
-	Critical bool `json:"critical"`
+	Critical bool `json:"critical" yaml:"critical"`
 }
 
 type VolumeMount struct {
 
 	// name of block volume
-	VolumeName string `json:"block_volume_name"`
+	VolumeName string `json:"block_volume_name" yaml:"block_volume_name"`
 
 	// path inside the volume
-	VolumePath string `json:"volume_path"`
+	VolumePath string `json:"volume_path" yaml:"volume_path"`
 
 	// path inside the container
-	GuestPath string `json:"guest_path"`
+	GuestPath string `json:"guest_path" yaml:"guest_path"`
 
 	// read only
-	ReadOnly bool `json:"read_only"`
+	ReadOnly bool `json:"read_only" yaml:"read_only"`
 }
 
 type BindMount struct {
 
 	// path on host
-	HostPath string `json:"host_path"`
+	HostPath string `json:"host_path" yaml:"host_path"`
 
 	// path inside container
-	GuestPath string `json:"guest_path"`
+	GuestPath string `json:"guest_path" yaml:"guest_path"`
 
 	// read only
-	ReadOnly bool `json:"read_only"`
-}
-
-type ConfigMount struct {
-
-	// path inside container
-	GuestPath string `json:"guest_path"`
-
-	// perms
-	GID string `json:"gid"`
-	// perms
-	UID string `json:"uid"`
-	// perms
-	Mode uint32 `json:"mode"`
-
-	// content
-	Content []byte `json:"content"`
+	ReadOnly bool `json:"read_only" yaml:"read_only"`
 }
 
 type Network struct {
-	Nameservers []string `json:"nameservers,omitempty"`
+	Nameservers  []string `json:"nameservers,omitempty" yaml:"nameservers,omitempty"`
+	SearchDomain string   `json:"search_domain,omitempty" yaml:"search_domain,omitempty"`
 
-	FabricIp6 string `json:"fip6,omitempty"`
-	FabricGw6 string `json:"fgw6,omitempty"`
+	IP6 []string `json:"fip6,omitempty" yaml:"fip6,omitempty"`
+	GW6 string   `json:"fgw6,omitempty" yaml:"fgw6,omitempty"`
 
-	TransitIp4 string `json:"tip4,omitempty"`
-	TransitGw4 string `json:"tgw4,omitempty"`
-
-	TransitIp6 string `json:"tip6,omitempty"`
-	TransitGw6 string `json:"tgw6,omitempty"`
-
-	PublicIPs []string `json:"public_ips,omitempty"`
-}
-
-type Role struct {
-	Api   []string `json:"api,omitempty"`
-	Token string   `json:"token,omitempty"`
+	IP4 []string `json:"tip4,omitempty" yaml:"tip4,omitempty"`
+	GW4 string   `json:"tgw4,omitempty" yaml:"tgw4,omitempty"`
 }

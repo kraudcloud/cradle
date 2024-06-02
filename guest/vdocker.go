@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mdlayher/vsock"
 	"io"
 	"net/http"
 	"strconv"
@@ -17,9 +18,16 @@ import (
 )
 
 func vdocker() {
+
 	go func() {
 		for {
-			err := http.ListenAndServe("["+CONFIG.Network.FabricIp6+"]:1", vdockerHttpHandler())
+			l, err := vsock.Listen(1, &vsock.Config{})
+			if err != nil {
+				log.Warn("vdocker http server error:", err)
+			}
+			time.Sleep(500 * time.Millisecond)
+
+			err = http.Serve(l, vdockerHttpHandler())
 			if err != nil {
 				log.Warn("vdocker http server error:", err)
 			}
@@ -32,7 +40,9 @@ func vdockerHttpHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if !strings.HasPrefix(r.RemoteAddr, "[fdfd:") && !strings.HasPrefix(r.RemoteAddr, "[fddd:") {
+		if !strings.HasPrefix(r.RemoteAddr, "[fdfd:") &&
+			!strings.HasPrefix(r.RemoteAddr, "[fddd:") &&
+			!strings.HasPrefix(r.RemoteAddr, "host") {
 			log.Warnf("docker api request from non-vpn address: %s. THIS IS A SECURITY ISSUE", r.RemoteAddr)
 			w.WriteHeader(403)
 			return
@@ -253,13 +263,13 @@ func handleListContainers(w http.ResponseWriter, r *http.Request) {
 			"State":   "running",
 		},
 	}
-	for i, container := range CONFIG.Pod.Containers {
+	for i, container := range CONFIG.Containers {
 
 		x = append(x, map[string]interface{}{
 			"Id":      fmt.Sprintf("container.%d", i),
-			"Names":   []string{"/" + container.ID},
-			"Image":   container.Image.ID,
-			"ImageID": container.Image.ID,
+			"Names":   []string{"/" + container.Hostname},
+			"Image":   container.Image.Ref,
+			"ImageID": container.Image.Ref,
 			"Command": strings.Join(container.Process.Cmd, " "),
 			"State":   "NotImplemented",
 			"Status":  "NotImplemented",
@@ -299,13 +309,13 @@ func handleCradleInspect(w http.ResponseWriter, r *http.Request) {
 
 func handleContainerInspect(w http.ResponseWriter, r *http.Request, index uint8) {
 
-	containerSpec := CONFIG.Pod.Containers[index]
+	containerSpec := CONFIG.Containers[index]
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"Id":      fmt.Sprintf("container.%d", index),
-		"Names":   []string{containerSpec.Name},
-		"Image":   containerSpec.Image.ID,
-		"ImageID": containerSpec.Image.ID,
+		"Names":   []string{containerSpec.Hostname},
+		"Image":   containerSpec.Image.Ref,
+		"ImageID": containerSpec.Image.Ref,
 		"Command": strings.Join(containerSpec.Process.Cmd, " "),
 		"Config": map[string]interface{}{
 			"Tty":          containerSpec.Process.Tty,
@@ -384,7 +394,7 @@ func handleContainerKill(w http.ResponseWriter, r *http.Request, index uint8) {
 func handleContainerLogs(w http.ResponseWriter, r *http.Request, index uint8) {
 
 	container := CONTAINERS[index]
-	containerSpec := CONFIG.Pod.Containers[index]
+	containerSpec := CONFIG.Containers[index]
 
 	follow := r.URL.Query().Get("follow") == "true" || r.URL.Query().Get("follow") == "1"
 	muxed := !containerSpec.Process.Tty && (r.URL.Query().Get("force_raw") == "")
@@ -418,7 +428,7 @@ func handleContainerLogs(w http.ResponseWriter, r *http.Request, index uint8) {
 
 func handleContainerAttach(w http.ResponseWriter, r *http.Request, index uint8) {
 	container := CONTAINERS[index]
-	containerSpec := CONFIG.Pod.Containers[index]
+	containerSpec := CONFIG.Containers[index]
 
 	muxed := !containerSpec.Process.Tty && (r.URL.Query().Get("force_raw") == "")
 
@@ -515,17 +525,17 @@ func findContainer(id string) (uint8, error) {
 	var vv = strings.Split(id, ".")
 	if len(vv) == 2 && vv[0] == "container" {
 		if index, err := strconv.ParseUint(vv[1], 10, 8); err == nil {
-			if int(index) < len(CONFIG.Pod.Containers) {
+			if int(index) < len(CONFIG.Containers) {
 				return uint8(index), nil
 			}
 		}
 	}
 
-	for i, container := range CONFIG.Pod.Containers {
-		if container.ID == id {
-			return uint8(i), nil
-		}
+	index, err := strconv.ParseUint(id, 10, 8)
+	if err == nil && len(CONFIG.Containers) > int(index) {
+		return uint8(index), nil
 	}
+
 	return 0, fmt.Errorf("no such container")
 }
 
@@ -665,7 +675,7 @@ func handleContainerExec(w http.ResponseWriter, r *http.Request, index uint8) {
 	req.containerIndex = index
 
 	env := []string{}
-	for k, v := range CONFIG.Pod.Containers[index].Process.Env {
+	for k, v := range CONFIG.Containers[index].Process.Env {
 		env = append(env, k+"="+v)
 	}
 	for _, v := range req.Env {
@@ -674,7 +684,7 @@ func handleContainerExec(w http.ResponseWriter, r *http.Request, index uint8) {
 	req.Env = env
 
 	if req.WorkingDir == "" {
-		req.WorkingDir = CONFIG.Pod.Containers[index].Process.Workdir
+		req.WorkingDir = CONFIG.Containers[index].Process.Workdir
 	}
 	if req.WorkingDir == "" {
 		req.WorkingDir = "/"

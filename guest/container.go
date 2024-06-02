@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/creack/pty"
-	"github.com/kraudcloud/cradle/spec"
 	"golang.org/x/sys/unix"
 	"io"
 	"os"
@@ -28,20 +27,15 @@ func main_run2(args []string) {
 		os.Exit(1)
 	}
 
-	id := args[1]
+	index, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Println("invalid container id")
+		os.Exit(1)
+	}
 
 	config()
 
-	var container spec.Container
-	for _, c := range CONFIG.Pod.Containers {
-		if c.ID == id {
-			container = c
-			break
-		}
-	}
-	if container.ID == "" {
-		panic("container not found")
-	}
+	var container = CONFIG.Containers[index]
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -50,7 +44,7 @@ func main_run2(args []string) {
 	// make all changes private
 	syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, "")
 
-	newroot := fmt.Sprintf("/cache/containers/%s/root", id)
+	newroot := fmt.Sprintf("/cache/containers/%d/root", index)
 	oldroot := "/"
 
 	// /proc
@@ -293,12 +287,9 @@ func main_run2(args []string) {
 
 	// set hostname
 	if container.Hostname == "" {
-		container.Hostname = container.Name
-	}
-	if container.Hostname == "" {
 		container.Hostname = "docker"
 	}
-	if err := syscall.Sethostname([]byte(container.Hostname + "." + CONFIG.Pod.Namespace)); err != nil {
+	if err := syscall.Sethostname([]byte(container.Hostname)); err != nil {
 		log.Error("set hostname failed: ", err)
 	}
 
@@ -366,11 +357,11 @@ func main_run2(args []string) {
 
 func (c *Container) mount() error {
 
-	var cache = fmt.Sprintf("/cache/containers/%s", c.Spec.ID)
-	var root = fmt.Sprintf("/cache/containers/%s/root", c.Spec.ID)
-	var lower = fmt.Sprintf("/cache/containers/%s/lower", c.Spec.ID)
-	var upper = fmt.Sprintf("/cache/containers/%s/upper", c.Spec.ID)
-	var work = fmt.Sprintf("/cache/containers/%s/work", c.Spec.ID)
+	var cache = fmt.Sprintf("/cache/containers/%d", c.Index)
+	var root = fmt.Sprintf("/cache/containers/%d/root", c.Index)
+	var lower = fmt.Sprintf("/cache/containers/%d/lower", c.Index)
+	var upper = fmt.Sprintf("/cache/containers/%d/upper", c.Index)
+	var work = fmt.Sprintf("/cache/containers/%d/work", c.Index)
 
 	os.MkdirAll(cache, 0755)
 	os.MkdirAll(root, 0755)
@@ -398,7 +389,7 @@ func (c *Container) mount() error {
 	for _, m := range c.Spec.VolumeMounts {
 
 		vp := filepath.Join("/var/lib/docker/volumes/", m.VolumeName, "_data", m.VolumePath)
-		gp := filepath.Join("/cache/containers/", c.Spec.ID, "root", m.GuestPath)
+		gp := filepath.Join("/cache/containers/", fmt.Sprintf("%d", c.Index), "root", m.GuestPath)
 
 		files, _ := os.ReadDir(vp)
 		if len(files) == 0 {
@@ -439,14 +430,14 @@ func (c *Container) prepare() error {
 		return err
 	}
 
-	var root = fmt.Sprintf("/cache/containers/%s/root", c.Spec.ID)
+	var root = fmt.Sprintf("/cache/containers/%d/root", c.Index)
 
 	// create /etc/hostname
 	f, err := os.Create(fmt.Sprintf("%s/etc/hostname", root))
 	if err != nil {
 		log.Error(fmt.Sprintf("create hostname file: %s", err))
 	} else {
-		f.WriteString(c.Spec.Hostname + "." + CONFIG.Pod.Namespace + "\n")
+		f.WriteString(c.Spec.Hostname + "\n")
 		f.Close()
 	}
 
@@ -474,8 +465,8 @@ func (c *Container) prepare() error {
 		log.Error(fmt.Sprintf("create hosts file: %s", err))
 	} else {
 		f.WriteString("127.0.0.1 localhost ")
-		for _, host := range CONFIG.Pod.Containers {
-			f.WriteString(fmt.Sprintf("%s %s", host.Hostname, host.Name))
+		for _, host := range CONFIG.Containers {
+			f.WriteString(fmt.Sprintf("%s", host.Hostname))
 		}
 		f.WriteString("\n")
 		f.Close()
@@ -489,25 +480,27 @@ func (c *Container) prepare() error {
 		f.Close()
 	}
 
-	// create config mounts
-	// should those be bind mounts so its more obvious that they are not part of the image?
-	for _, mount := range c.Spec.ConfigMounts {
-		os.MkdirAll(fmt.Sprintf("%s/%s", root, filepath.Dir(mount.GuestPath)), 0755)
-		f, err = os.Create(fmt.Sprintf("%s/%s", root, mount.GuestPath))
-		if err != nil {
-			log.Error(fmt.Sprintf("create config mount file: %s", err))
-		} else {
-			f.Write(mount.Content)
-			f.Close()
+	/*
+		// create config mounts
+		// should those be bind mounts so its more obvious that they are not part of the image?
+		for _, mount := range c.Spec.ConfigMounts {
+			os.MkdirAll(fmt.Sprintf("%s/%s", root, filepath.Dir(mount.GuestPath)), 0755)
+			f, err = os.Create(fmt.Sprintf("%s/%s", root, mount.GuestPath))
+			if err != nil {
+				log.Error(fmt.Sprintf("create config mount file: %s", err))
+			} else {
+				f.Write(mount.Content)
+				f.Close()
+			}
 		}
-	}
+	*/
 
 	return nil
 }
 
 func (c *Container) run() error {
 
-	cmd := exec.Command("/proc/self/exe", "run2", c.Spec.ID)
+	cmd := exec.Command("/proc/self/exe", "run2", fmt.Sprintf("%d", c.Index))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWNS |
 			syscall.CLONE_NEWUTS |
@@ -550,7 +543,7 @@ func (c *Container) run() error {
 			for i := 0; i < 1000; i++ {
 
 				n, err := io.Copy(c.Log, c.Pty)
-				log.Printf("container %s ptmx ended after reading %d bytes: %s", c.Spec.ID, n, err)
+				log.Printf("container %d ptmx ended after reading %d bytes: %s", c.Index, n, err)
 
 				// TODO systemd closes the tty, but we have no way of detecting that vs a real close
 				// https://github.com/systemd/systemd/issues/21451
@@ -589,6 +582,9 @@ func (c *Container) run() error {
 				n, err := stdout.Read(buf[:])
 				if n > 0 {
 					c.Log.WriteWithDockerStream(buf[:n], 1)
+
+					// also write to cradle
+					log.Out.Write(buf[:n])
 				}
 				if err != nil {
 					break
@@ -603,6 +599,9 @@ func (c *Container) run() error {
 				n, err := stderr.Read(buf[:])
 				if n > 0 {
 					c.Log.WriteWithDockerStream(buf[:n], 2)
+
+					// also write to cradle
+					log.Out.Write(buf[:n])
 				}
 				if err != nil {
 					break
@@ -611,9 +610,7 @@ func (c *Container) run() error {
 		}()
 	}
 
-	os.WriteFile(fmt.Sprintf("/cache/containers/%s/pid", c.Spec.ID), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
-
-	reportContainerState(c.Spec.ID, spec.STATE_RUNNING, -1, "", nil)
+	os.WriteFile(fmt.Sprintf("/cache/containers/%d/pid", c.Index), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
 
 	state, err := cmd.Process.Wait()
 	if err != nil {
@@ -625,7 +622,6 @@ func (c *Container) run() error {
 
 	lastlog := bytes.Buffer{}
 	c.Log.WriteTo(&lastlog)
-	reportContainerState(c.Spec.ID, spec.STATE_EXITED, state.ExitCode(), state.String(), lastlog.Bytes())
 
 	if !state.Success() {
 		return fmt.Errorf(state.String())

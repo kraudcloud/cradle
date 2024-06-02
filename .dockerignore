@@ -4,3 +4,5 @@
 /pkg-default
 /pkg-snp
 /.dockerignore
+/Dockerfile
+/Makefile

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"io/ioutil"
 	golog "log"
 	"os"
 	"os/exec"
@@ -14,6 +13,9 @@ import (
 )
 
 func main_init() {
+
+	log.Println("cradle: pre init stderr")
+
 	uinit()
 
 	lo, err := os.OpenFile("/dev/kmsg", os.O_WRONLY, 0)
@@ -28,6 +30,9 @@ func main_init() {
 
 	wdinit()
 	makedev()
+	config()
+
+	podUp("network")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -38,7 +43,6 @@ func main_init() {
 	}()
 
 	go func() {
-		config()
 		network()
 		podPrepare()
 		wg.Done()
@@ -46,15 +50,11 @@ func main_init() {
 
 	wg.Wait()
 
-	services()
-	startDns()
-	go vmm3()
-
 	vdocker()
 
-	extpreboot()
+	podUp("volume")
 
-	wg.Add(4)
+	wg.Add(3)
 	go func() {
 		unpackLayers()
 		wg.Done()
@@ -67,13 +67,10 @@ func main_init() {
 		fileVolumes()
 		wg.Done()
 	}()
-	go func() {
-		emulateDockerSock()
-		wg.Done()
-	}()
 	wg.Wait()
 
-	podUp()
+	podUp("pod")
+	podUp("")
 
 	log.Println("cradle: up")
 
@@ -115,7 +112,7 @@ func makedev() {
 
 	os.MkdirAll("/dev/disk/by-serial/", 0777)
 
-	iter, err := ioutil.ReadDir("/sys/class/block/")
+	iter, err := os.ReadDir("/sys/class/block/")
 	if err != nil {
 		log.Errorf("ReadDir: %v", err)
 		return
@@ -125,12 +122,12 @@ func makedev() {
 		name := f.Name()
 
 		// /dev/disk/by-serial/serial
-		serial, err := ioutil.ReadFile("/sys/class/block/" + name + "/serial")
+		serial, err := os.ReadFile("/sys/class/block/" + name + "/serial")
 		if err == nil {
 			os.Symlink("/dev/"+name, "/dev/disk/by-serial/"+string(serial))
 		}
 
-		serial, err = ioutil.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
+		serial, err = os.ReadFile("/sys/class/block/" + name + "/device/vpd_pg83")
 		if err == nil {
 			serial = serial[8:]
 

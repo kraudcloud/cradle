@@ -87,7 +87,7 @@ func unpackLayers() {
 		io.Copy(ioutil.Discard, reader)
 		hash := fmt.Sprintf("%x", hasher.Sum(nil))
 
-		for _, container := range CONFIG.Pod.Containers {
+		for _, container := range CONFIG.Containers {
 			for _, layer := range container.Image.Layers {
 				if layer.ID == uuid {
 

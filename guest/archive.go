@@ -43,11 +43,7 @@ func handleArchiveGet(w http.ResponseWriter, r *http.Request, host bool, index u
 
 	root := "/"
 	if !host {
-		CONTAINERS_LOCK.Lock()
-		cid := CONTAINERS[index].Spec.ID
-		CONTAINERS_LOCK.Unlock()
-
-		root = path.Join("/cache/containers", cid, "root")
+		root = path.Join("/cache/containers", fmt.Sprintf("%d", index), "root")
 	}
 
 	p := path.Join(root, r.URL.Query().Get("path"))
@@ -223,11 +219,7 @@ func handleArchivePut(w http.ResponseWriter, r *http.Request, host bool, index u
 
 	root := "/"
 	if !host {
-		CONTAINERS_LOCK.Lock()
-		cid := CONTAINERS[index].Spec.ID
-		CONTAINERS_LOCK.Unlock()
-
-		root = path.Join("/cache/containers", cid, "root")
+		root = path.Join("/cache/containers", fmt.Sprintf("%d", index), "root")
 	}
 
 	p := path.Join(root, r.URL.Query().Get("path")) + "/"

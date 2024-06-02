@@ -36,7 +36,7 @@ func podPrepare() {
 	CONTAINERS_LOCK.Lock()
 	defer CONTAINERS_LOCK.Unlock()
 
-	for i, c := range CONFIG.Pod.Containers {
+	for i, c := range CONFIG.Containers {
 
 		if i >= 255 {
 			log.Error("too many containers")
@@ -72,9 +72,9 @@ func podMount() {
 	}
 }
 
-func podUp() {
+func podUp(before string) {
 
-	syscall.Sethostname([]byte(CONFIG.Pod.Name + "." + CONFIG.Pod.Namespace))
+	syscall.Sethostname([]byte("cradle"))
 
 	CONTAINERS_LOCK.Lock()
 	defer CONTAINERS_LOCK.Unlock()
@@ -86,11 +86,15 @@ func podUp() {
 			break
 		}
 
+		if CONTAINERS[i].Spec.Lifecycle.Before != before {
+			continue
+		}
+
 		// cancel the dmesg
 		CONTAINERS[i].cancel()
 
 		CONTAINERS[i].Log.Write([]byte("[        o ~.~ o       ]: entering container " +
-			CONTAINERS[i].Spec.Name + "\r\n\r\n"))
+			CONTAINERS[i].Spec.Hostname + "\r\n\r\n"))
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -121,7 +125,7 @@ func (c *Container) stop(reason string) {
 
 			//vmm(spec.YKContainer(uint8(c.Index), spec.YC_SUB_STDERR),
 			//	[]byte("container did not terminate within 15 seconds, killing it"))
-			log.Println("container", c.Spec.Name, "did not terminate after 15 seconds, killing")
+			log.Println("container", c.Spec.Hostname, "did not terminate after 15 seconds, killing")
 			c.Process.Signal(syscall.SIGKILL)
 		}
 	}
@@ -129,7 +133,7 @@ func (c *Container) stop(reason string) {
 
 	lastlog := bytes.Buffer{}
 	c.Log.WriteTo(&lastlog)
-	reportContainerState(c.Spec.ID, spec.STATE_EXITED, -1, reason, lastlog.Bytes())
+	//reportContainerState(c.Spec.ID, spec.STATE_EXITED, -1, reason, lastlog.Bytes())
 }
 
 func (c *Container) manager(ctx context.Context) {
@@ -156,10 +160,10 @@ func (c *Container) manager(ctx context.Context) {
 
 		var restart = true
 		if err == nil {
-			log.Println("container", c.Spec.Name, "exited")
+			log.Println("container", c.Spec.Hostname, "exited")
 			restart = c.Spec.Lifecycle.RestartOnSuccess
 		} else {
-			log.Println("container", c.Spec.Name, "exited with error:", err)
+			log.Println("container", c.Spec.Hostname, "exited with error:", err)
 			restart = c.Spec.Lifecycle.RestartOnFailure
 		}
 
@@ -168,7 +172,7 @@ func (c *Container) manager(ctx context.Context) {
 		}
 
 		if attempt >= max {
-			log.Println("container", c.Spec.Name, "reached max restarts")
+			log.Println("container", c.Spec.Hostname, "reached max restarts")
 			break
 		}
 
@@ -186,6 +190,6 @@ func (c *Container) manager(ctx context.Context) {
 
 	if c.Spec.Lifecycle.Critical {
 		time.Sleep(time.Millisecond * 100)
-		exit(fmt.Errorf("critical container %s exited", c.Spec.Name))
+		exit(fmt.Errorf("critical container %s exited", c.Spec.Hostname))
 	}
 }

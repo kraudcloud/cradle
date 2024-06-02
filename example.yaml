@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example
+spec:
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+
+  containers:
+  - name: cradle
+    command:
+      - cradle
+      - run
+      - --inline
+      - |
+        apiVersion: cradle.kraudcloud.com/v3
+        kind: CradleLaunchIntent
+        spec:
+          resources:
+            mem: 1024
+            cpu: 1
+          containers:
+            - image:
+                ref: ctr.0x.pt/library/alpine
+              lifecycle:
+                before: config
+              process:
+                cmd:
+                  - /bin/sh
+                  - -c
+                  - echo ok
+            - image:
+                ref: ctr.0x.pt/library/alpine
+              lifecycle:
+                critical: true
+
+    image: ctr.0x.pt/kraud/cradle:803eea8-dirty
+    securityContext:
+      privileged: true
+    volumeMounts:
+      - mountPath: /dev/shm
+        name: shm
+

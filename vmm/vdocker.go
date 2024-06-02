@@ -3,17 +3,51 @@
 package vmm
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"github.com/mdlayher/vsock"
+	"io"
+	"net"
 )
 
-func (self *Vmm) HttpHandler() http.Handler {
-	url, err := url.Parse(fmt.Sprintf("http://[%s]:1/", self.config.Network.FabricIp6))
+func (self *VM) StartVDocker() error {
+
+	dockerSocker, err := net.ListenUnix("unix", &net.UnixAddr{
+		Name: "/var/run/docker.sock",
+		Net:  "unix",
+	})
+
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	return httputil.NewSingleHostReverseProxy(url)
+	go func() {
+		for {
+			conn, err := dockerSocker.AcceptUnix()
+			if err != nil {
+				panic(err)
+			}
+
+			go func() {
+
+				vsock, err := vsock.Dial(self.PodNetwork.CID, 1, &vsock.Config{})
+				if err != nil {
+					conn.Close()
+					log.Error(err)
+					return
+				}
+
+				go func() {
+					defer vsock.Close()
+					io.Copy(vsock, conn)
+				}()
+
+				go func() {
+					defer conn.Close()
+					io.Copy(conn, vsock)
+				}()
+
+			}()
+		}
+	}()
+
+	return nil
 }

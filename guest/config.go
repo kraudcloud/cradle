@@ -37,7 +37,7 @@ func config() {
 		return
 	}
 
-	for _, container := range CONFIG.Pod.Containers {
+	for _, container := range CONFIG.Containers {
 
 		if container.Process.Env == nil {
 			container.Process.Env = map[string]string{}
