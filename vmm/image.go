@@ -101,10 +101,13 @@ func (self *VM) DownloadImage(
 		cmd = append(cmd, c)
 	}
 
-	env := make(map[string]string)
+	env := []spec.Env{}
 	for _, e := range cfgf.Config.Env {
 		a, b, _ := strings.Cut(e, "=")
-		env[a] = b
+		env = append(env, spec.Env{
+			Name:  a,
+			Value: b,
+		})
 	}
 
 	specProc := spec.Process{

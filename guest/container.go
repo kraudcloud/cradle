@@ -293,26 +293,20 @@ func main_run2(args []string) {
 		log.Error("set hostname failed: ", err)
 	}
 
-	if container.Process.Env == nil {
-		container.Process.Env = map[string]string{}
-	}
-	if container.Process.Env["PATH"] == "" {
-		container.Process.Env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	}
-	if container.Process.Env["TERM"] == "" {
-		container.Process.Env["TERM"] = "xterm"
-	}
-	if container.Process.Env["HOME"] == "" {
-		container.Process.Env["HOME"] = "/root"
+	var flatenv = []string{}
+	for _, v := range container.Process.Env {
+		flatenv = append(flatenv, v.Name+"="+v.Value)
 	}
 
-	var flatenv = []string{}
-	for k, v := range container.Process.Env {
-		flatenv = append(flatenv, k+"="+v)
+	var path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	for _, v := range container.Process.Env {
+		if v.Name == "PATH" && v.Value != "" {
+			path = v.Value
+		}
 	}
 
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
-		for _, path := range strings.Split(container.Process.Env["PATH"], ":") {
+		for _, path := range strings.Split(path, ":") {
 			if _, err := os.Stat(filepath.Join(path, container.Process.Cmd[0])); err == nil {
 				container.Process.Cmd[0] = filepath.Join(path, container.Process.Cmd[0])
 				break
@@ -321,7 +315,7 @@ func main_run2(args []string) {
 	}
 	if !strings.HasPrefix(container.Process.Cmd[0], "/") {
 		log.Error("executable file not found in $PATH: ", container.Process.Cmd[0])
-		log.Error("PATH: ", container.Process.Env["PATH"])
+		log.Error("PATH: ", path)
 	}
 
 	if container.Process.Workdir == "" {

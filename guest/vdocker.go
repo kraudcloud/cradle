@@ -675,8 +675,8 @@ func handleContainerExec(w http.ResponseWriter, r *http.Request, index uint8) {
 	req.containerIndex = index
 
 	env := []string{}
-	for k, v := range CONFIG.Containers[index].Process.Env {
-		env = append(env, k+"="+v)
+	for _, v := range CONFIG.Containers[index].Process.Env {
+		env = append(env, v.Name+"="+v.Value)
 	}
 	for _, v := range req.Env {
 		env = append(env, v)

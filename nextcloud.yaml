@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example
+spec:
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+
+  containers:
+  - name: cradle
+    image: ctr.0x.pt/kraud/cradle:1ffcc88-dirty
+    securityContext:
+      privileged: true
+    volumeMounts:
+      - mountPath: /dev/shm
+        name: shm
+    env:
+      - name:   POSTGRES_PASSWORD
+        value:  fixmeGetFromSecret
+    command:
+      - cradle
+      - run
+      - --inline
+      - |
+        apiVersion: cradle.kraudcloud.com/v3
+        kind: CradleLaunchIntent
+        spec:
+          id: f8b26feb-8997-4ab4-ae74-843b1abd9d44
+          resources:
+            mem: 1024
+            cpu: 1
+          containers:
+            - image:
+                ref: ctr.0x.pt/library/alpine
+              lifecycle:
+                before: config
+              process:
+                cmd:
+                  - /bin/sh
+                  - -c
+                  - echo ok
+
+            - image:
+                ref: nextcloud:28
+              lifecycle:
+                critical: true
+              process:
+                env:
+                  - name: POSTGRES_HOST
+                    value: localhost
+                  - name: POSTGRES_USER
+                    value: postgres
+                  - name: POSTGRES_DB
+                    value: postgres
+                  - name: OVERWRITEPROTOCOL
+                    value: https
+                  - name: TRUSTED_PROXIES
+                    value: "*"
+                  - name: POSTGRES_PASSWORD
+                    valueFrom:
+                      podEnv: POSTGRES_PASSWORD
+
+            - image:
+                ref: postgres:15.3
+              lifecycle:
+                critical: true
+              process:
+                env:
+                  - name: POSTGRES_PASSWORD
+                    fromPodEnv: POSTGRES_PASSWORD
+                    valueFrom:
+                      podEnv: POSTGRES_PASSWORD
+
+

@@ -85,7 +85,7 @@ type Process struct {
 	Cmd []string `json:"cmd" yaml:"cmd"`
 
 	// environment variables
-	Env map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	Env []Env `json:"env,omitempty" yaml:"env,omitempty"`
 
 	// working directory
 	Workdir string `json:"workdir,omitempty" yaml:"workdir,omitempty"`
@@ -95,6 +95,16 @@ type Process struct {
 
 	// User to run as. defaults to 0
 	User string `json:"user,omitempty" yaml:"user,omitempty"`
+}
+
+type Env struct {
+	Name      string        `json:"name" yaml:"name"`
+	Value     string        `json:"value,omitempty" yaml:"value,omitempty"`
+	ValueFrom *EnvValueFrom `json:"valueFrom,omitempty" yaml:"valueFrom,omitempty"`
+}
+
+type EnvValueFrom struct {
+	PodEnv string `json:"podEnv,omitempty" yaml:"podEnv,omitempty"`
 }
 
 type Lifecycle struct {

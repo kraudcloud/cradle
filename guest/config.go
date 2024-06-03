@@ -37,21 +37,21 @@ func config() {
 		return
 	}
 
-	for _, container := range CONFIG.Containers {
-
-		if container.Process.Env == nil {
-			container.Process.Env = map[string]string{}
-		}
-		if container.Process.Env["PATH"] == "" {
-			container.Process.Env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-		}
-		if container.Process.Env["TERM"] == "" {
-			container.Process.Env["TERM"] = "xterm"
-		}
-		if container.Process.Env["HOME"] == "" {
-			container.Process.Env["HOME"] = "/root"
-		}
-
+	for i, _ := range CONFIG.Containers {
+		CONFIG.Containers[i].Process.Env = append([]spec.Env{
+			{
+				Name:  "PATH",
+				Value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			},
+			{
+				Name:  "TERM",
+				Value: "xterm",
+			},
+			{
+				Name:  "HOME",
+				Value: "/",
+			},
+		}, CONFIG.Containers[i].Process.Env...)
 	}
 
 }

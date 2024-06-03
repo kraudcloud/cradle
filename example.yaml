@@ -18,6 +18,7 @@ spec:
         apiVersion: cradle.kraudcloud.com/v3
         kind: CradleLaunchIntent
         spec:
+          id: f8b26feb-8997-4ab4-ae74-843b1abd9d44
           resources:
             mem: 1024
             cpu: 1
@@ -36,7 +37,7 @@ spec:
               lifecycle:
                 critical: true
 
-    image: ctr.0x.pt/kraud/cradle:803eea8-dirty
+    image: ctr.0x.pt/kraud/cradle:1ffcc88-dirty
     securityContext:
       privileged: true
     volumeMounts:

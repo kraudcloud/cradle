@@ -92,12 +92,40 @@ func RunCMD() *cobra.Command {
 			vm.Launch.Resources.Mem = arg_mem
 
 			log.Println("downloading images")
-			for i, ctr := range vm.Launch.Containers {
-				ctr, err := vm.DownloadImage(cmd.Context(), ctr.Image.Ref, "")
+			for i := range vm.Launch.Containers {
+
+				ctr2, err := vm.DownloadImage(cmd.Context(), vm.Launch.Containers[i].Image.Ref, "")
 				if err != nil {
 					panic(err)
 				}
-				vm.Launch.Containers[i] = *ctr
+				vm.Launch.Containers[i].Image = ctr2.Image
+
+				if vm.Launch.Containers[i].Process.Cmd == nil {
+					vm.Launch.Containers[i].Process.Cmd = ctr2.Process.Cmd
+				}
+				if vm.Launch.Containers[i].Process.Workdir == "" {
+					vm.Launch.Containers[i].Process.Workdir = ctr2.Process.Workdir
+				}
+
+				if vm.Launch.Containers[i].Hostname == "" {
+					vm.Launch.Containers[i].Hostname = ctr2.Hostname
+				}
+				if vm.Launch.Containers[i].Hostname == "" {
+					vm.Launch.Containers[i].Hostname = fmt.Sprintf("container.%d", i)
+				}
+
+				vm.Launch.Containers[i].Process.Env = append(
+					ctr2.Process.Env,
+					vm.Launch.Containers[i].Process.Env...,
+				)
+
+				for k, v := range vm.Launch.Containers[i].Process.Env {
+					if v.ValueFrom != nil {
+						if v.ValueFrom.PodEnv != "" {
+							vm.Launch.Containers[i].Process.Env[k].Value = os.Getenv(v.ValueFrom.PodEnv)
+						}
+					}
+				}
 			}
 
 			log.Println("setting up pod network")
