@@ -12,7 +12,7 @@ type Launch struct {
 
 	Containers []Container `json:"containers,omitempty" yaml:"containers,omitempty"`
 
-	Volumes []Volume `json:"block_volumes,omitempty" yaml:"block_volumes,omitempty"`
+	Volumes []Volume `json:"blockVolumes,omitempty" yaml:"blockVolumes,omitempty"`
 }
 
 type Resources struct {
@@ -52,10 +52,10 @@ type Container struct {
 	Lifecycle Lifecycle `json:"lifecycle" yaml:"lifecycle"`
 
 	// mount volumes
-	VolumeMounts []VolumeMount `json:"block_volume_mounts,omitempty" yaml:"block_volume_mounts,omitempty"`
+	VolumeMounts []VolumeMount `json:"blockVolumeMounts,omitempty" yaml:"blockVolumeMounts,omitempty"`
 
 	// mount cradle host paths into container
-	BindMounts []BindMount `json:"bind_mounts,omitempty" yaml:"bind_mounts,omitempty"`
+	BindMounts []BindMount `json:"bindMounts,omitempty" yaml:"bindMounts,omitempty"`
 }
 
 type Image struct {
@@ -113,19 +113,19 @@ type Lifecycle struct {
 	Before string `json:"before,omitempty" yaml:"stage,omitempty"`
 
 	// should container restart with exit code 0
-	RestartOnSuccess bool `json:"restart_on_success" yaml:"restart_on_success"`
+	RestartOnSuccess bool `json:"restartOnSuccess" yaml:"restartOnSuccess"`
 
 	// should container restart with exit code != 0
-	RestartOnFailure bool `json:"restart_on_failure" yaml:"restart_on_failure"`
+	RestartOnFailure bool `json:"restartOnFailure" yaml:"restartOnFailure"`
 
 	// delay restarts by this amount of milliseconds
-	RestartDelay uint64 `json:"restart_delay" yaml:"restart_delay"`
+	RestartDelay uint64 `json:"restartDelay" yaml:"restartDelay"`
 
 	// give up after starting this many times.
 	// note that the first start counts too
 	// 1 means never restart after initial launch
 	// 0 means infinite
-	MaxRestarts int `json:"max_restarts,omitempty" yaml:"max_restarts,omitempty"`
+	MaxRestarts int `json:"maxRestarts,omitempty" yaml:"maxRestarts,omitempty"`
 
 	// fail entire pod when maxrestarts is reached
 	Critical bool `json:"critical" yaml:"critical"`
@@ -134,33 +134,33 @@ type Lifecycle struct {
 type VolumeMount struct {
 
 	// name of block volume
-	VolumeName string `json:"block_volume_name" yaml:"block_volume_name"`
+	VolumeName string `json:"blockVolumeName" yaml:"blockVolumeName"`
 
 	// path inside the volume
-	VolumePath string `json:"volume_path" yaml:"volume_path"`
+	VolumePath string `json:"volumePath" yaml:"volumePath"`
 
 	// path inside the container
-	GuestPath string `json:"guest_path" yaml:"guest_path"`
+	GuestPath string `json:"guestPath" yaml:"guestPath"`
 
 	// read only
-	ReadOnly bool `json:"read_only" yaml:"read_only"`
+	ReadOnly bool `json:"readOnly" yaml:"readOnly"`
 }
 
 type BindMount struct {
 
 	// path on host
-	HostPath string `json:"host_path" yaml:"host_path"`
+	HostPath string `json:"hostPath" yaml:"hostPath"`
 
 	// path inside container
-	GuestPath string `json:"guest_path" yaml:"guest_path"`
+	GuestPath string `json:"guestPath" yaml:"guestPath"`
 
 	// read only
-	ReadOnly bool `json:"read_only" yaml:"read_only"`
+	ReadOnly bool `json:"readOnly" yaml:"readOnly"`
 }
 
 type Network struct {
 	Nameservers  []string `json:"nameservers,omitempty" yaml:"nameservers,omitempty"`
-	SearchDomain string   `json:"search_domain,omitempty" yaml:"search_domain,omitempty"`
+	SearchDomain string   `json:"searchDomain,omitempty" yaml:"searchDomain,omitempty"`
 
 	IP6 []string `json:"fip6,omitempty" yaml:"fip6,omitempty"`
 	GW6 string   `json:"fgw6,omitempty" yaml:"fgw6,omitempty"`

@@ -118,8 +118,6 @@ func (self *VM) SetupNetworkPostLaunch() error {
 
 	netlink.LinkSetUp(cradleif)
 
-	// v4 needs a 1:1 nat over a transit network
-
 	netlink.AddrReplace(cradleif, &netlink.Addr{
 		IPNet: &net.IPNet{
 			IP:   net.ParseIP(self.Launch.Network.GW4),
@@ -127,21 +125,40 @@ func (self *VM) SetupNetworkPostLaunch() error {
 		},
 	})
 
-	// route transit ip into the vm
 	netlink.RouteReplace(&netlink.Route{
 		LinkIndex: cradleif.Attrs().Index,
-		Dst:       &net.IPNet{IP: net.ParseIP(self.Launch.Network.IP4[0]), Mask: net.CIDRMask(32, 32)},
+		Dst:       &net.IPNet{IP: net.ParseIP("169.254.1.2"), Mask: net.CIDRMask(32, 32)},
 		Scope:     netlink.SCOPE_LINK,
 	})
 
-	// TODO masq for now because 1:1 nat would cause support tickets
+	netlink.AddrReplace(cradleif, &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   net.ParseIP(self.Launch.Network.GW6),
+			Mask: net.CIDRMask(128, 128),
+		},
+	})
+
+	netlink.RouteReplace(&netlink.Route{
+		LinkIndex: cradleif.Attrs().Index,
+		Dst:       &net.IPNet{IP: net.ParseIP("fdee:face::2"), Mask: net.CIDRMask(128, 128)},
+		Scope:     netlink.SCOPE_LINK,
+	})
+
 	system("nft", "add table ip nat")
+
+	system("nft", "add chain ip nat prerouting { type nat hook prerouting priority -100; }")
+	system("nft", "add rule  ip nat prerouting iif eth0 dnat to 169.254.1.2")
+
 	system("nft", "add chain ip nat postrouting { type nat hook postrouting priority 100; }")
-	system("nft", "add rule ip nat postrouting oifname \"eth0\" masquerade")
+	system("nft", "add rule ip nat postrouting oifname eth0 masquerade")
 
 	system("nft", "add table ip6 nat")
+
+	system("nft", "add chain ip6 nat prerouting { type filter hook prerouting priority raw; policy accept; }")
+	//system("nft", "add rule  ip6 nat prerouting iifname eth0 dnat to fdee:face::2")
+
 	system("nft", "add chain ip6 nat postrouting { type nat hook postrouting priority 100; }")
-	system("nft", "add rule  ip6 nat postrouting oifname \"eth0\" masquerade")
+	system("nft", "add rule  ip6 nat postrouting oifname eth0 masquerade")
 
 	/*
 		// v6 is less broken so we can just directly route.

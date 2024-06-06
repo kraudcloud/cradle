@@ -15,6 +15,15 @@ import (
 
 func (self *VM) qemuArgs() []string {
 
+	if self.CradleGuest.Firmware.PFlash0 != "" {
+		system("cp", self.CradleGuest.Firmware.PFlash0, filepath.Join(self.WorkDir, "files", "pflash0"))
+		self.CradleGuest.Firmware.PFlash0 = filepath.Join(self.WorkDir, "files", "pflash0")
+	}
+	if self.CradleGuest.Firmware.PFlash1 != "" {
+		system("cp", self.CradleGuest.Firmware.PFlash1, filepath.Join(self.WorkDir, "files", "pflash1"))
+		self.CradleGuest.Firmware.PFlash1 = filepath.Join(self.WorkDir, "files", "pflash1")
+	}
+
 	var bus = "device"
 	var qemuargs []string
 
@@ -56,7 +65,7 @@ func (self *VM) qemuArgs() []string {
 
 	// vdocker
 	qemuargs = append(qemuargs,
-		"-device", fmt.Sprintf("vhost-vsock-device,guest-cid=%d", self.PodNetwork.CID),
+		"-device", fmt.Sprintf("vhost-vsock-"+bus+",guest-cid=%d", self.PodNetwork.CID),
 	)
 
 	// network
@@ -170,6 +179,9 @@ func (self *VM) qemuArgsMicroVm(qemuargs []string) []string {
 
 func (self *VM) qemuArgsSnp(qemuargs []string) []string {
 
+	if self.Launch.Resources.Mem < 1024 {
+		self.Launch.Resources.Mem = 1024
+	}
 	mem := self.Launch.Resources.Mem
 
 	launchHash := sha256.New()
@@ -179,16 +191,23 @@ func (self *VM) qemuArgsSnp(qemuargs []string) []string {
 	host_data_b64 := base64.StdEncoding.EncodeToString(launchHash.Sum(nil))
 
 	qemuargs = append(qemuargs,
-		"-nographic",
+		"-vga", "none",
+		"-nographic", "--no-reboot",
 		"-enable-kvm",
-		"-no-reboot",
-		"-cpu", "EPYC-v4",
-		"-M", "q35,memory-encryption=sev0,vmport=off",
-		"-object", "memory-backend-memfd,id=ram1,size="+fmt.Sprintf("%dM", mem)+",share=true,prealloc=false",
+
+		"-machine", "q35",
+		"-cpu", "EPYC-v4,pmu=off",
+		"-object", "rng-random,id=rng0,filename=/dev/urandom",
+		"-device", "virtio-rng-pci,rng=rng0",
+		"-rtc", "base=utc,driftfix=slew,clock=host",
+		"-global", "kvm-pit.lost_tick_policy=discard",
+		"-object", "memory-backend-memfd,id=dimm1,size="+fmt.Sprintf("%dM", mem)+",share=true,prealloc=false",
+		"-machine", "memory-encryption=sev0,vmport=off",
+		"-machine", "memory-backend=dimm1",
 		"-object", "sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,host-data="+host_data_b64,
-		"-machine", "memory-backend=ram1",
-		"-append", "earlyprintk=ttyS0 console=ttyS0 panic=2",
+
 		"-kernel", self.CradleGuest.Kernel.Kernel,
+		"-append", "earlyprintk=ttyS0 console=ttyS0 panic=2",
 	)
 
 	if self.CradleGuest.Kernel.Initrd != "" {
@@ -196,10 +215,10 @@ func (self *VM) qemuArgsSnp(qemuargs []string) []string {
 	}
 
 	if self.CradleGuest.Firmware.PFlash0 != "" {
-		qemuargs = append(qemuargs, "-drive", "if=pflash,format=raw,unit=0,file="+self.CradleGuest.Firmware.PFlash0)
+		qemuargs = append(qemuargs, "-bios", self.CradleGuest.Firmware.PFlash0)
 	}
 	if self.CradleGuest.Firmware.PFlash1 != "" {
-		qemuargs = append(qemuargs, "-drive", "if=pflash,format=raw,unit=1,file="+self.CradleGuest.Firmware.PFlash1)
+		qemuargs = append(qemuargs, "-drive", "if=pflash,format=raw,unit=0,file="+self.CradleGuest.Firmware.PFlash1)
 	}
 
 	return qemuargs

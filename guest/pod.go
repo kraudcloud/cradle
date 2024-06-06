@@ -99,7 +99,15 @@ func podUp(before string) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		CONTAINERS[i].cancel = cancel
-		go CONTAINERS[i].manager(ctx)
+
+		if before == "" {
+			go CONTAINERS[i].manager(ctx)
+		} else {
+			if CONTAINERS[i].Spec.Lifecycle.MaxRestarts == 0 {
+				CONTAINERS[i].Spec.Lifecycle.MaxRestarts = 1
+			}
+			CONTAINERS[i].manager(ctx)
+		}
 	}
 }
 
@@ -186,6 +194,10 @@ func (c *Container) manager(ctx context.Context) {
 			return
 		case <-time.After(time.Millisecond * time.Duration(delay)):
 		}
+	}
+
+	if err == nil && c.Spec.Lifecycle.Before != "" {
+		return
 	}
 
 	if c.Spec.Lifecycle.Critical {

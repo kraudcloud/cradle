@@ -22,28 +22,18 @@ run mkdir -p /pkg/default/
 run cp arch/x86_64/boot/bzImage /pkg/default/kernel
 run make modules -j8 && make INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=/pkg/default/root modules_install
 
-run apk --no-cache add bash
 
-run \
-	./scripts/config --enable  EXPERT &&\
-	./scripts/config --enable  DEBUG_INFO &&\
-	./scripts/config --enable  AMD_MEM_ENCRYPT &&\
-	./scripts/config --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT &&\
-	./scripts/config --enable  KVM &&\
-	./scripts/config --enable  KVM_AMD &&\
-	./scripts/config --enable  PCI &&\
-	./scripts/config --enable  CRYPTO_DEV_CCP_DD &&\
-	./scripts/config --enable  KVM_AMD_SEV &&\
-	./scripts/config --disable SYSTEM_TRUSTED_KEYS &&\
-	./scripts/config --disable SYSTEM_REVOCATION_KEYS &&\
-	./scripts/config --enable  SEV_GUEST &&\
-	./scripts/config --disable IOMMU_DEFAULT_PASSTHROUGH &&\
-	./scripts/config --disable PREEMPT_COUNT &&\
-	./scripts/config --disable PREEMPTION &&\
-	./scripts/config --disable PREEMPT_DYNAMIC &&\
-	./scripts/config --disable DEBUG_PREEMPT &&\
-	./scripts/config --enable  CGROUP_MISC
 
+# snp
+
+
+run git remote add snp https://github.com/AMDESE/linux.git
+run git fetch snp
+run git checkout 05b10142ac6a1a3b02d4be018e119c2648d1da6c
+
+run apk --no-cache add bash openssl-dev openssl
+
+copy kernel-config-x86_64-snp /src/linux/.config
 
 run make olddefconfig
 run make -j8
@@ -135,7 +125,7 @@ copy --from=kernelbuilder /pkg/snp/root/lib/modules /lib/modules
 
 from alpine as ctr-build-default
 
-run apk --no-cache add iproute2 zfs qemu-system-x86_64 virtiofsd nftables tcpdump docker-cli findutils
+run apk --no-cache add iproute2 qemu-system-x86_64 virtiofsd nftables tcpdump docker-cli findutils curl
 copy --from=gobuild /src/cradle /bin/cradle
 entrypoint ["/bin/cradle"]
 
@@ -170,9 +160,14 @@ copy --from=ctr-build-default / /
 
 #----------------------------------------------------
 
+from alpine as qemu-snp-builder
+
+
+#----------------------------------------------------
+
 from alpine as ctr-build-snp
 
-run apk --no-cache add iproute2 zfs nftables tcpdump docker-cli findutils
+run apk --no-cache add iproute2 nftables tcpdump docker-cli findutils curl
 copy --from=gobuild /src/cradle /bin/cradle
 entrypoint ["/bin/cradle"]
 
@@ -197,13 +192,19 @@ run cat - > /cradle/cradle.json <<EOF
 }
 EOF
 
+
+
+
 copy --from=initrd-snp / /build/initrd
 run mknod -m 666 /build/initrd/dev/console c 5 1
 run mknod -m 666 /build/initrd/dev/null c 1 3
 run ( cd /build/initrd && find . -mount | cpio -o -H newc ) > /cradle/initrd
 run rm -rf /build/
 
-run apk --no-cache add go zfs-dev make git ninja pkgconfig pixman-dev glib-dev wget liburing-dev libcap-ng-dev attr-dev bash perl python3 gcc g++
+run apk --no-cache add go make git ninja pkgconfig pixman-dev \
+    glib-dev wget liburing liburing-dev libcap-ng libcap-ng-dev attr attr-dev bash perl python3 gcc g++ \
+    pixman glib libbz2
+
 
 run git clone https://github.com/AMDESE/qemu.git
 run cd qemu &&\
@@ -216,9 +217,17 @@ run cd qemu &&\
     --enable-virtfs \
     --enable-linux-io-uring \
     --extra-cflags=-Wno-error \
-    --prefix=/ &&\
+    --prefix=/usr &&\
     make -j &&\
     make install
+
+run rm -rf /qemu
+run apk del make git ninja pkgconfig pixman-dev glib-dev wget bash perl python3 gcc g++ go libcap-ng-dev liburing-dev attr-dev bash
+
+
+# FIXME cant figure out why ovmf is broken again
+copy bin-snp/pflash0 /cradle/pflash0
+copy bin-snp/pflash1 /cradle/pflash1
 
 from scratch as cradle-snp
 copy --from=ctr-build-snp / /
