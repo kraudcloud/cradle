@@ -50,7 +50,7 @@ spec:
     kr/snp: "v14"
   containers:
   - name: cradle
-    image: ctr.0x.pt/kraud/cradle-snp:1c83a59-dirty
+    image: ctr.0x.pt/kraud/cradle-snp:0f0a103-dirty
     imagePullPolicy: Always
     securityContext:
       privileged: true
@@ -73,7 +73,7 @@ spec:
             mem: 1024
             cpu: 1
           containers:
-            - hostname: enclaivelet
+            - name: enclaivelet
               bindMounts:
                 - hostPath:  /config
                   guestPath: /config
@@ -97,17 +97,8 @@ spec:
                   - name:  ENCLAIVE_SOURCE
                     value: kraud
               lifecycle:
-                before:  volume
-
-            - image:
-                ref: ctr.0x.pt/library/alpine
-              lifecycle:
-                before: config
-              process:
-                cmd:
-                  - /bin/sh
-                  - -c
-                  - echo ok
+                critical: true
+                before:   volume
 
             - image:
                 ref: nextcloud:28

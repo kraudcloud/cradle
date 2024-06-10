@@ -40,7 +40,7 @@ type Volume struct {
 type Container struct {
 
 	// hostname inside container
-	Hostname string `json:"hostname" yaml:"hostname"`
+	Name string `json:"name" yaml:"name"`
 
 	// image config
 	Image Image `json:"image,omitempty" yaml:"image,omitempty"`
@@ -110,7 +110,7 @@ type EnvValueFrom struct {
 type Lifecycle struct {
 
 	// when to run the container:
-	Before string `json:"before,omitempty" yaml:"stage,omitempty"`
+	Before string `json:"before,omitempty" yaml:"before,omitempty"`
 
 	// should container restart with exit code 0
 	RestartOnSuccess bool `json:"restartOnSuccess" yaml:"restartOnSuccess"`

@@ -267,7 +267,7 @@ func handleListContainers(w http.ResponseWriter, r *http.Request) {
 
 		x = append(x, map[string]interface{}{
 			"Id":      fmt.Sprintf("container.%d", i),
-			"Names":   []string{"/" + container.Hostname},
+			"Names":   []string{"/" + container.Name},
 			"Image":   container.Image.Ref,
 			"ImageID": container.Image.Ref,
 			"Command": strings.Join(container.Process.Cmd, " "),
@@ -313,7 +313,7 @@ func handleContainerInspect(w http.ResponseWriter, r *http.Request, index uint8)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"Id":      fmt.Sprintf("container.%d", index),
-		"Names":   []string{containerSpec.Hostname},
+		"Names":   []string{containerSpec.Name},
 		"Image":   containerSpec.Image.Ref,
 		"ImageID": containerSpec.Image.Ref,
 		"Command": strings.Join(containerSpec.Process.Cmd, " "),

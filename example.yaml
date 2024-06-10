@@ -1,15 +1,65 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: public
+  rules:
+  - host: cradle.nextcloud.ig.ecl.d3d1.de
+    http:
+      paths:
+      - backend:
+          service:
+            name: example
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - cradle.nextcloud.ig.ecl.d3d1.de
+    secretName: ingress-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example
+spec:
+  selector:
+    app: example
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
 apiVersion: v1
 kind: Pod
 metadata:
   name: example
+  labels:
+    app: example
 spec:
   volumes:
     - name: shm
       emptyDir:
         medium: Memory
-
+  nodeSelector:
+    kr/snp: "v14"
   containers:
   - name: cradle
+    image: ctr.0x.pt/kraud/cradle-snp:0f0a103-dirty
+    imagePullPolicy: Always
+    securityContext:
+      privileged: true
+    volumeMounts:
+      - mountPath: /dev/shm
+        name: shm
+    env:
+      - name:   POSTGRES_PASSWORD
+        value:  fixmeGetFromSecret
     command:
       - cradle
       - run
@@ -23,24 +73,29 @@ spec:
             mem: 1024
             cpu: 1
           containers:
-            - image:
-                ref: ctr.0x.pt/library/alpine
-              lifecycle:
-                before: config
+            - name: enclaivelet
+              bindMounts:
+                - hostPath:  /config
+                  guestPath: /config
+                  readOnly:  true
+              image:
+                ref: harbor.enclaive.cloud/public/enclaivelet
               process:
-                cmd:
-                  - /bin/sh
-                  - -c
-                  - echo ok
-            - image:
-                ref: ctr.0x.pt/library/alpine
+                env:
+                  - name:  ENCLAIVE_FEATURES
+                    value: ssh-pw:664f38b1e12d890cbdf7010a:emcp:root
+                  - name:  ENCLAIVE_INSTANCE
+                    value: ef4656eb-84ed-4cb2-a622-d30227453d5a
+                  - name:  ENCLAIVE_KEYSTORE
+                    value: https://nitride.dev.m4rgdmtr.1d.pt
+                  - name:  ENCLAIVE_NITRIDE
+                    value: https://nitride.dev.m4rgdmtr.1d.pt
+                  - name:  ENCLAIVE_PROTOCOL
+                    value: sev-snp
+                  - name:  ENCLAIVE_RESOURCE
+                    value: 664f39ace19b740cbd2bf8a3
+                  - name:  ENCLAIVE_SOURCE
+                    value: kraud
               lifecycle:
                 critical: true
-
-    image: ctr.0x.pt/kraud/cradle:1ffcc88-dirty
-    securityContext:
-      privileged: true
-    volumeMounts:
-      - mountPath: /dev/shm
-        name: shm
-
+                before:   volume

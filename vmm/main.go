@@ -107,11 +107,11 @@ func RunCMD() *cobra.Command {
 					vm.Launch.Containers[i].Process.Workdir = ctr2.Process.Workdir
 				}
 
-				if vm.Launch.Containers[i].Hostname == "" {
-					vm.Launch.Containers[i].Hostname = ctr2.Hostname
+				if vm.Launch.Containers[i].Name == "" {
+					vm.Launch.Containers[i].Name = ctr2.Name
 				}
-				if vm.Launch.Containers[i].Hostname == "" {
-					vm.Launch.Containers[i].Hostname = fmt.Sprintf("container.%d", i)
+				if vm.Launch.Containers[i].Name == "" {
+					vm.Launch.Containers[i].Name = fmt.Sprintf("container.%d", i)
 				}
 
 				vm.Launch.Containers[i].Process.Env = append(

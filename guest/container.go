@@ -286,10 +286,10 @@ func main_run2(args []string) {
 	oldroot = "/oldroot-not-available"
 
 	// set hostname
-	if container.Hostname == "" {
-		container.Hostname = "docker"
+	if container.Name == "" {
+		container.Name = "docker"
 	}
-	if err := syscall.Sethostname([]byte(container.Hostname)); err != nil {
+	if err := syscall.Sethostname([]byte(container.Name)); err != nil {
 		log.Error("set hostname failed: ", err)
 	}
 
@@ -431,7 +431,7 @@ func (c *Container) prepare() error {
 	if err != nil {
 		log.Error(fmt.Sprintf("create hostname file: %s", err))
 	} else {
-		f.WriteString(c.Spec.Hostname + "\n")
+		f.WriteString(c.Spec.Name + "\n")
 		f.Close()
 	}
 
@@ -460,7 +460,7 @@ func (c *Container) prepare() error {
 	} else {
 		f.WriteString("127.0.0.1 localhost ")
 		for _, host := range CONFIG.Containers {
-			f.WriteString(fmt.Sprintf("%s", host.Hostname))
+			f.WriteString(fmt.Sprintf("%s", host.Name))
 		}
 		f.WriteString("\n")
 		f.Close()

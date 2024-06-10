@@ -124,16 +124,16 @@ func (self *VM) DownloadImage(
 	}
 
 	specCtr := &spec.Container{
-		Hostname: cfgf.Config.Hostname,
-		Process:  specProc,
+		Name:		cfgf.Config.Hostname,
+		Process:	specProc,
 		Image: spec.Image{
 			Ref:    strref,
 			Layers: specLayers,
 		},
 	}
 
-	if specCtr.Hostname == "" {
-		specCtr.Hostname = "cradle"
+	if specCtr.Name == "" {
+		specCtr.Name = "cradle"
 	}
 
 	return specCtr, nil

@@ -52,13 +52,11 @@ func main_init() {
 
 	vdocker()
 
+	unpackLayers()
+
 	podUp("volume")
 
-	wg.Add(3)
-	go func() {
-		unpackLayers()
-		wg.Done()
-	}()
+	wg.Add(2)
 	go func() {
 		blockVolumes()
 		wg.Done()
