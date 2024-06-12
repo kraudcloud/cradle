@@ -77,6 +77,7 @@ func RunCMD() *cobra.Command {
 					ID:         cro.Spec.ID,
 					Containers: cro.Spec.Containers,
 					Resources:  cro.Spec.Resources,
+					Volumes:	cro.Spec.VolumeDevices,
 				},
 				WorkDir: fmt.Sprintf("/var/run/cradle/pods/%s/%d", cro.Spec.ID, arg_instance),
 			}

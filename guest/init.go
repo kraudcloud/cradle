@@ -32,8 +32,6 @@ func main_init() {
 	makedev()
 	config()
 
-	podUp("network")
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -54,7 +52,7 @@ func main_init() {
 
 	unpackLayers()
 
-	podUp("volume")
+	podUp("volumes")
 
 	wg.Add(2)
 	go func() {

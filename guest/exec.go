@@ -87,8 +87,8 @@ func (e *Exec) Run(dout io.WriteCloser, din io.Reader) {
 			e.Cmd[0],
 		}, e.Cmd[1:]...)...)
 
-		for k, v := range container.Spec.Process.Env {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		for _, v := range container.Spec.Process.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", v.Name, v.Value))
 		}
 
 	}

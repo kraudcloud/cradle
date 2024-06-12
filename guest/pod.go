@@ -59,19 +59,6 @@ func podPrepare() {
 	}
 }
 
-func podMount() {
-	CONTAINERS_LOCK.Lock()
-	defer CONTAINERS_LOCK.Unlock()
-
-	for _, container := range CONTAINERS {
-		err := container.mount()
-		if err != nil {
-			log.Error(err)
-			exit(err)
-		}
-	}
-}
-
 func podUp(before string) {
 
 	syscall.Sethostname([]byte("cradle"))
@@ -90,13 +77,12 @@ func podUp(before string) {
 			continue
 		}
 
+		log.Println("preparing container",  CONTAINERS[i].Spec.Name)
+
 		// cancel the dmesg
 		if  CONTAINERS[i].cancel != nil  {
 			CONTAINERS[i].cancel()
 		}
-
-		CONTAINERS[i].Log.Write([]byte("[        o ~.~ o       ]: entering container " +
-			CONTAINERS[i].Spec.Name + "\r\n\r\n"))
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -105,7 +91,9 @@ func podUp(before string) {
 		if before == "" {
 			go CONTAINERS[i].manager(ctx)
 		} else {
+			CONTAINERS_LOCK.Unlock()
 			CONTAINERS[i].manager(ctx)
+			CONTAINERS_LOCK.Lock()
 		}
 	}
 }
@@ -155,11 +143,16 @@ func (c *Container) manager(ctx context.Context) {
 		panic(err)
 	}
 
+
+
 	var max = 100000000
 	if c.Spec.Lifecycle.MaxRestarts > 0 {
 		max = c.Spec.Lifecycle.MaxRestarts
 	}
 	for attempt := 1; ; attempt++ {
+
+		c.Log.Write([]byte("[        o ~.~ o       ]: entering container " + c.Spec.Name + "\r\n\r\n"))
+
 		err = c.run()
 
 		select {

@@ -12,7 +12,7 @@ type Launch struct {
 
 	Containers []Container `json:"containers,omitempty" yaml:"containers,omitempty"`
 
-	Volumes []Volume `json:"blockVolumes,omitempty" yaml:"blockVolumes,omitempty"`
+	Volumes []Volume `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 }
 
 type Resources struct {
@@ -24,16 +24,13 @@ type Resources struct {
 type Volume struct {
 
 	// id passed as serial number
-	ID string `json:"id" yaml:"id"`
-
-	// name referenced inside container
 	Name string `json:"name" yaml:"name"`
 
-	// hvm transport mode
-	Transport string `json:"transport" yaml:"transport"`
+	// path of block device on hvm
+	DevicePath string `json:"devicePath,omitempty" yaml:"devicePath,omitempty"`
 
-	// hvm class
-	Class string `json:"class,omitempty" yaml:"class,omitempty"`
+	// hvm transport mode
+	Transport string `json:"transport,omitempty" yaml:"transport,omitempty"`
 }
 
 // the container spec
@@ -52,10 +49,10 @@ type Container struct {
 	Lifecycle Lifecycle `json:"lifecycle" yaml:"lifecycle"`
 
 	// mount volumes
-	VolumeMounts []VolumeMount `json:"blockVolumeMounts,omitempty" yaml:"blockVolumeMounts,omitempty"`
+	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" yaml:"volumeMounts,omitempty"`
 
 	// mount cradle host paths into container
-	BindMounts []BindMount `json:"bindMounts,omitempty" yaml:"bindMounts,omitempty"`
+	KernelMounts []KernelMount `json:"kernelMounts,omitempty" yaml:"kernelMounts,omitempty"`
 }
 
 type Image struct {
@@ -133,8 +130,8 @@ type Lifecycle struct {
 
 type VolumeMount struct {
 
-	// name of block volume
-	VolumeName string `json:"blockVolumeName" yaml:"blockVolumeName"`
+	// id of block volume
+	VolumeName string `json:"volumeName" yaml:"volumeName"`
 
 	// path inside the volume
 	VolumePath string `json:"volumePath" yaml:"volumePath"`
@@ -146,7 +143,7 @@ type VolumeMount struct {
 	ReadOnly bool `json:"readOnly" yaml:"readOnly"`
 }
 
-type BindMount struct {
+type KernelMount struct {
 
 	// path on host
 	HostPath string `json:"hostPath" yaml:"hostPath"`

@@ -110,21 +110,20 @@ func (self *VM) qemuArgs() []string {
 
 	for i, volume := range self.Launch.Volumes {
 
-		if volume.Class == "lb1" {
+		if volume.DevicePath == "" {
+			continue
+		}
 
-			qemuargs = append(qemuargs,
+		qemuargs = append(qemuargs,
 				"-drive",
-				fmt.Sprintf("format=raw,file=/dev/volumes/lb1/%s,id=drive-virtio-volume-%d,throttling.iops-total=5000,throttling.iops-size=250000,if=none",
-					volume.ID, i),
+				fmt.Sprintf("format=raw,file=%s,id=drive-virtio-volume-%d,throttling.iops-total=5000,throttling.iops-size=250000,if=none",
+					volume.DevicePath, i),
 
 				"-device",
 				fmt.Sprintf("scsi-hd,drive=drive-virtio-volume-%d,id=virtio-volume-%d,serial=volume.%d,device_id=volume.%s.img",
-					i, i, i, volume.ID),
-			)
+					i, i, i, volume.Name),
+		)
 
-		} else {
-			panic("unsupported volume class: " + volume.Class)
-		}
 	}
 
 	// layers

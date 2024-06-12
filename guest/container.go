@@ -179,7 +179,7 @@ func main_run2(args []string) {
 		}
 	}
 
-	for _, m := range container.BindMounts {
+	for _, m := range container.KernelMounts {
 
 		if m.GuestPath == "" || m.GuestPath == "/" {
 			continue

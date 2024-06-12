@@ -79,7 +79,7 @@ func blockVolumes() {
 
 		var ref spec.Volume
 		for _, v := range CONFIG.Volumes {
-			if v.ID == uuid {
+			if v.Name == uuid {
 				ref = v
 				break
 			}

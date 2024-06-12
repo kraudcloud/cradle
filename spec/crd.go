@@ -7,7 +7,8 @@ type CradleLaunchIntent struct {
 }
 
 type CradleLaunchIntentSpec struct {
-	ID         string      `json:"id" yaml:"id"`
-	Containers []Container `json:"containers,omitempty" yaml:"containers,omitempty"`
-	Resources  Resources   `json:"resources,omitempty" yaml:"resources,omitempty"`
+	ID				string		`json:"id" yaml:"id"`
+	Containers		[]Container	`json:"containers,omitempty" yaml:"containers,omitempty"`
+	Resources		Resources	`json:"resources,omitempty" yaml:"resources,omitempty"`
+	VolumeDevices	[]Volume	`json:"volumeDevices,omitempty" yaml:"volumeDevices,omitempty"`
 }
