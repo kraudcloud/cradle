@@ -1,3 +1,28 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: public
+  rules:
+  - host: cradle.nextcloud.ig.ecl.d3d1.de
+    http:
+      paths:
+      - backend:
+          service:
+            name: example
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - cradle.nextcloud.ig.ecl.d3d1.de
+    secretName: ingress-tls
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,7 +32,7 @@ metadata:
 spec:
   ports:
   - port: 80
-    name: web
+    targetPort: 80
   selector:
     app: example
 ---
@@ -31,7 +56,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 1G
+            storage: 10G
         storageClassName: longhorn
         volumeMode: Block
   template:
@@ -109,20 +134,39 @@ spec:
                   lifecycle:
                     critical: true
                     before:   volumes
-                - name: debug
+                - image:
+                    ref: nextcloud:28
+                  lifecycle:
+                    critical: true
+                  process:
+                    env:
+                      - name: postgres_host
+                        value: localhost
+                      - name: POSTGRES_USER
+                        value: postgres
+                      - name: POSTGRES_DB
+                        value: postgres
+                      - name: OVERWRITEPROTOCOL
+                        value: https
+                      - name: TRUSTED_PROXIES
+                        value: "*"
+                      - name: POSTGRES_PASSWORD
+                        value: password
                   volumeMounts:
                     - volumeName: example
                       volumePath: /data
-                      guestPath:  /data
-                  kernelMounts:
-                    - hostPath:  /config
-                      guestPath: /
-                      readOnly:  true
-                  image:
-                    ref: alpine
-                  process:
-                    cmd:
-                      - /bin/sleep
-                      - infinity
+                      guestPath:  /var/www/html
+                - image:
+                    ref: postgres:15.3
                   lifecycle:
                     critical: true
+                  process:
+                    env:
+                      - name: POSTGRES_PASSWORD
+                        value: password
+                  volumeMounts:
+                    - volumeName: example
+                      volumePath: /db
+                      guestPath:  /var/lib/postgresql/data
+
+

@@ -66,6 +66,8 @@ func main_init() {
 	wg.Wait()
 
 	podUp("pod")
+	config()
+
 	podUp("")
 
 	log.Println("cradle: up")
